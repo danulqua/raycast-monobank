@@ -29,13 +29,33 @@ export default function Command() {
     }
   }
 
-  function isPinned(rate: CurrencyRate) {
-    return pinned.some((pinnedRate) => pinnedRate === rate.id);
+  async function onRearrange(rate: CurrencyRate, direction: "up" | "down") {
+    const rateIndex = pinned.findIndex((pinnedRate) => pinnedRate === rate.id);
+    const newPinned = [...pinned];
+
+    if (direction === "up") {
+      newPinned[rateIndex] = newPinned[rateIndex - 1];
+      newPinned[rateIndex - 1] = rate.id;
+      await showToast(Toast.Style.Success, `Moved up ${getTitle(rate.currencyA, rate.currencyB)}`);
+    } else {
+      newPinned[rateIndex] = newPinned[rateIndex + 1];
+      newPinned[rateIndex + 1] = rate.id;
+      await showToast(Toast.Style.Success, `Moved down ${getTitle(rate.currencyA, rate.currencyB)}`);
+    }
+
+    setPinned(newPinned);
+  }
+
+  function getValidRearrangeDirections(rate: CurrencyRate) {
+    return {
+      up: pinned.findIndex((pinnedRate) => pinnedRate === rate.id) > 0,
+      down: pinned.findIndex((pinnedRate) => pinnedRate === rate.id) < pinned.length - 1,
+    };
   }
 
   const transformedRates = data.map(transformRate);
   const filteredRates = category === "all" ? transformedRates.filter((rate) => !pinned.includes(rate.id)) : [];
-  const pinnedRates = transformedRates.filter((rate) => pinned.includes(rate.id));
+  const pinnedRates = pinned.map((pinnedRate) => transformedRates.find((rate) => rate.id === pinnedRate)!);
   const isLoading = isRatesLoading || isPinnedLoadingFromLS;
 
   return (
@@ -49,7 +69,15 @@ export default function Command() {
               title={getTitle(item.currencyA, item.currencyB)}
               subtitle={getSubtitle(item)}
               accessories={getAccessories(item)}
-              actions={<RateActions item={item} isPinned={isPinned(item)} onPin={onPin} />}
+              actions={
+                <RateActions
+                  item={item}
+                  isPinned={true}
+                  onRearrange={onRearrange}
+                  validRearrangeDirections={getValidRearrangeDirections(item)}
+                  onPin={onPin}
+                />
+              }
             />
           ))}
         </List.Section>
@@ -65,7 +93,7 @@ export default function Command() {
             title={getTitle(item.currencyA, item.currencyB)}
             subtitle={getSubtitle(item)}
             accessories={getAccessories(item)}
-            actions={<RateActions item={item} isPinned={isPinned(item)} onPin={onPin} />}
+            actions={<RateActions item={item} isPinned={false} onPin={onPin} />}
           />
         ))}
       </List.Section>
@@ -86,8 +114,14 @@ function CategoryDropdown(props: { onCategoryChange: (newValue: string) => void 
   );
 }
 
-function RateActions(props: { item: CurrencyRate; isPinned: boolean; onPin: (rate: CurrencyRate) => void }) {
-  const { item, isPinned, onPin } = props;
+function RateActions(props: {
+  item: CurrencyRate;
+  isPinned: boolean;
+  onPin: (rate: CurrencyRate) => void;
+  onRearrange?: (rate: CurrencyRate, direction: "up" | "down") => void;
+  validRearrangeDirections?: { up: boolean; down: boolean };
+}) {
+  const { item, isPinned, onPin, onRearrange, validRearrangeDirections } = props;
 
   return (
     <ActionPanel>
@@ -98,6 +132,27 @@ function RateActions(props: { item: CurrencyRate; isPinned: boolean; onPin: (rat
         shortcut={{ key: "p", modifiers: ["cmd", "shift"] }}
         onAction={() => onPin(item)}
       />
+      {isPinned && onRearrange && (
+        <>
+          {validRearrangeDirections?.up && (
+            <Action
+              title="Move Up in Pinned"
+              icon={Icon.ArrowUp}
+              shortcut={{ key: "arrowUp", modifiers: ["cmd", "opt"] }}
+              onAction={() => onRearrange(item, "up")}
+            />
+          )}
+
+          {validRearrangeDirections?.down && (
+            <Action
+              title="Move Down in Pinned"
+              icon={Icon.ArrowDown}
+              shortcut={{ key: "arrowDown", modifiers: ["cmd", "opt"] }}
+              onAction={() => onRearrange(item, "down")}
+            />
+          )}
+        </>
+      )}
     </ActionPanel>
   );
 }
