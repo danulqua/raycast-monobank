@@ -1,10 +1,12 @@
-import { ActionPanel, Action, List, Icon } from "@raycast/api";
+import { ActionPanel, Action, List, Icon, showToast, Toast } from "@raycast/api";
 import { useCurrencyRates } from "./hooks/useCurrencyRates";
 import { transformRate } from "./utils/transformRate";
 import { Currency, CurrencyRate } from "./types";
 import { useLocalStorage } from "./hooks/useLocalStorage";
+import { useState } from "react";
 
 export default function Command() {
+  const [category, setCategory] = useState<Category>("all");
   const { data, isLoading: isRatesLoading } = useCurrencyRates();
   const {
     data: pinned,
@@ -13,20 +15,26 @@ export default function Command() {
   } = useLocalStorage<string[]>("pinned-rates", []);
 
   function onCategoryChange(newValue: string) {
-    console.log(newValue);
+    setCategory(newValue as Category);
   }
 
-  function onPin(rate: CurrencyRate) {
+  async function onPin(rate: CurrencyRate) {
     const isPinned = pinned.some((pinnedRate) => pinnedRate === rate.id);
     if (isPinned) {
       setPinned(pinned.filter((pinnedRate) => pinnedRate !== rate.id));
+      await showToast(Toast.Style.Success, `Unpinned ${getTitle(rate.currencyA, rate.currencyB)}`);
     } else {
       setPinned([...pinned, rate.id]);
+      await showToast(Toast.Style.Success, `Pinned ${getTitle(rate.currencyA, rate.currencyB)}`);
     }
   }
 
+  function isPinned(rate: CurrencyRate) {
+    return pinned.some((pinnedRate) => pinnedRate === rate.id);
+  }
+
   const transformedRates = data.map(transformRate);
-  const filteredRates = transformedRates.filter((rate) => !pinned.includes(rate.id));
+  const filteredRates = category === "all" ? transformedRates.filter((rate) => !pinned.includes(rate.id)) : [];
   const pinnedRates = transformedRates.filter((rate) => pinned.includes(rate.id));
   const isLoading = isRatesLoading || isPinnedLoadingFromLS;
 
@@ -41,7 +49,7 @@ export default function Command() {
               title={getTitle(item.currencyA, item.currencyB)}
               subtitle={getSubtitle(item)}
               accessories={getAccessories(item)}
-              actions={<RateActions item={item} onPin={onPin} />}
+              actions={<RateActions item={item} isPinned={isPinned(item)} onPin={onPin} />}
             />
           ))}
         </List.Section>
@@ -57,7 +65,7 @@ export default function Command() {
             title={getTitle(item.currencyA, item.currencyB)}
             subtitle={getSubtitle(item)}
             accessories={getAccessories(item)}
-            actions={<RateActions item={item} onPin={onPin} />}
+            actions={<RateActions item={item} isPinned={isPinned(item)} onPin={onPin} />}
           />
         ))}
       </List.Section>
@@ -78,15 +86,15 @@ function CategoryDropdown(props: { onCategoryChange: (newValue: string) => void 
   );
 }
 
-function RateActions(props: { item: CurrencyRate; onPin: (rate: CurrencyRate) => void }) {
-  const { item, onPin } = props;
+function RateActions(props: { item: CurrencyRate; isPinned: boolean; onPin: (rate: CurrencyRate) => void }) {
+  const { item, isPinned, onPin } = props;
 
   return (
     <ActionPanel>
       <Action.CopyToClipboard content={item.rateSell} />
       <Action
-        title="Pin"
-        icon={Icon.Pin}
+        title={!isPinned ? "Pin" : "Unpin"}
+        icon={!isPinned ? Icon.Pin : Icon.PinDisabled}
         shortcut={{ key: "p", modifiers: ["cmd", "shift"] }}
         onAction={() => onPin(item)}
       />
