@@ -170,7 +170,7 @@ function RateActions(props: {
 }
 
 function getTitle(currencyA: Currency, currencyB: Currency) {
-  return `${currencyA.flag} ${currencyA.code} - ${currencyB.flag} ${currencyB.code}`;
+  return `${currencyA.flag} ${currencyA.code} – ${currencyB.flag} ${currencyB.code}`;
 }
 
 function getSubtitle(rate: CurrencyRate) {
