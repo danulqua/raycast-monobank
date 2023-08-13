@@ -125,34 +125,46 @@ function RateActions(props: {
 
   return (
     <ActionPanel>
-      <Action.CopyToClipboard content={item.rateSell} />
-      <Action
-        title={!isPinned ? "Pin" : "Unpin"}
-        icon={!isPinned ? Icon.Pin : Icon.PinDisabled}
-        shortcut={{ key: "p", modifiers: ["cmd", "shift"] }}
-        onAction={() => onPin(item)}
-      />
-      {isPinned && onRearrange && (
-        <>
-          {validRearrangeDirections?.up && (
-            <Action
-              title="Move Up in Pinned"
-              icon={Icon.ArrowUp}
-              shortcut={{ key: "arrowUp", modifiers: ["cmd", "opt"] }}
-              onAction={() => onRearrange(item, "up")}
-            />
-          )}
+      <ActionPanel.Section>
+        {!item.rateCross ? (
+          <>
+            <Action.CopyToClipboard title="Copy Sell Rate" content={item.rateSell} />
+            <Action.CopyToClipboard title="Copy Buy Rate" content={item.rateBuy} />
+          </>
+        ) : (
+          <Action.CopyToClipboard title="Copy Cross Rate" content={item.rateCross} />
+        )}
+      </ActionPanel.Section>
 
-          {validRearrangeDirections?.down && (
-            <Action
-              title="Move Down in Pinned"
-              icon={Icon.ArrowDown}
-              shortcut={{ key: "arrowDown", modifiers: ["cmd", "opt"] }}
-              onAction={() => onRearrange(item, "down")}
-            />
-          )}
-        </>
-      )}
+      <ActionPanel.Section>
+        <Action
+          title={!isPinned ? "Pin" : "Unpin"}
+          icon={!isPinned ? Icon.Pin : Icon.PinDisabled}
+          shortcut={{ key: "p", modifiers: ["cmd", "shift"] }}
+          onAction={() => onPin(item)}
+        />
+        {isPinned && onRearrange && (
+          <>
+            {validRearrangeDirections?.up && (
+              <Action
+                title="Move Up in Pinned"
+                icon={Icon.ArrowUp}
+                shortcut={{ key: "arrowUp", modifiers: ["cmd", "opt"] }}
+                onAction={() => onRearrange(item, "up")}
+              />
+            )}
+
+            {validRearrangeDirections?.down && (
+              <Action
+                title="Move Down in Pinned"
+                icon={Icon.ArrowDown}
+                shortcut={{ key: "arrowDown", modifiers: ["cmd", "opt"] }}
+                onAction={() => onRearrange(item, "down")}
+              />
+            )}
+          </>
+        )}
+      </ActionPanel.Section>
     </ActionPanel>
   );
 }
@@ -162,7 +174,7 @@ function getTitle(currencyA: Currency, currencyB: Currency) {
 }
 
 function getSubtitle(rate: CurrencyRate) {
-  return rate.rateCross ? rate.rateCross.toFixed(2) : rate.rateBuy.toFixed(2) + " / " + rate.rateSell.toFixed(2);
+  return rate.rateCross ? rate.rateCross.toString() : rate.rateBuy + " / " + rate.rateSell;
 }
 
 function getAccessories(rate: CurrencyRate) {
