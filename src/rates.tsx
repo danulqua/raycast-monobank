@@ -177,6 +177,6 @@ function getSubtitle(rate: CurrencyRate) {
   return rate.rateCross ? rate.rateCross.toString() : rate.rateBuy + " / " + rate.rateSell;
 }
 
-function getAccessories(rate: CurrencyRate) {
+function getAccessories(rate: CurrencyRate): List.Item.Accessory[] {
   return [{ text: `${rate.currencyA.name} – ${rate.currencyB.name}` }];
 }

@@ -44,7 +44,7 @@ export function useCurrencyRates() {
     } catch (error) {
       console.error(error);
       setIsError(true);
-      return [];
+      return data.rates.length ? data.rates : [];
     } finally {
       setIsLoading(false);
     }

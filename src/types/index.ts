@@ -1,4 +1,6 @@
 export * from "./api";
+export * from "./preferences";
+export * from "./accounts";
 
 export interface Currency {
   name: string;
@@ -16,5 +18,3 @@ export interface CurrencyRate {
   rateCross: number;
   rateSell: number;
 }
-
-export type Currencies = Record<number, Currency>;

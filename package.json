@@ -15,6 +15,22 @@
       "title": "Show Currency Rates",
       "description": "Currency rates in monobank.",
       "mode": "view"
+    },
+    {
+      "name": "accounts",
+      "title": "Show Accounts",
+      "description": "All your accounts in monobank.",
+      "mode": "view",
+      "preferences": [
+        {
+          "name": "token",
+          "type": "password",
+          "title": "Access Token",
+          "description": "Your monobank Access Token",
+          "placeholder": "Enter Your Access Token",
+          "required": true
+        }
+      ]
     }
   ],
   "dependencies": {
