@@ -20,6 +20,8 @@ export default function Command() {
             const maskedPan = account.maskedPan.length ? account.maskedPan[0] : "";
             return (
               <List.Item
+                key={account.id}
+                id={account.id}
                 title={getTitle(account)}
                 subtitle={account.balance.toFixed(2)}
                 accessories={[{ text: maskedPan }]}
@@ -34,7 +36,9 @@ export default function Command() {
 
       <List.Section title="Jars">
         {transformedJars.length ? (
-          transformedJars.map((jar) => <List.Item title={getTitle(jar)} subtitle={jar.balance.toFixed(2)} />)
+          transformedJars.map((jar) => (
+            <List.Item key={jar.id} id={jar.id} title={getTitle(jar)} subtitle={jar.balance.toFixed(2)} />
+          ))
         ) : (
           <List.EmptyView />
         )}
