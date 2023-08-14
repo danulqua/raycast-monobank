@@ -3,7 +3,7 @@ import { Currency, Jar, JarResponse } from "../types";
 import { getEmojiByCurrencyCode } from "./getEmojiByCurrencyCode";
 
 export function transformJar(jar: JarResponse): Jar {
-  const { currencyCode, balance, ...other } = jar;
+  const { currencyCode, balance, goal, ...other } = jar;
   const currencyCodeRecord = cc.number(currencyCode.toString())!;
 
   const currency: Currency = {
@@ -16,6 +16,7 @@ export function transformJar(jar: JarResponse): Jar {
   return {
     currency,
     balance: balance / 100,
+    goal: goal / 100,
     ...other,
   };
 }
