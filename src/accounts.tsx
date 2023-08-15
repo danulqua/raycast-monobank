@@ -7,7 +7,7 @@ import { Account, Jar } from "./types";
 import { isAccount } from "./utils/typeGuards";
 import { accountTypeColors } from "./data/constants";
 import { useCurrencyRates } from "./hooks/useCurrencyRates";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { calculateTotal } from "./utils/calculateTotal";
 import { useLocalStorage } from "./hooks/useLocalStorage";
 
@@ -22,6 +22,17 @@ export default function Command() {
     setData: setPinned,
     isLoading: isPinnedLoadingFromLS,
   } = useLocalStorage<string[]>("pinned-accounts", []);
+
+  useEffect(() => {
+    if (isAccountsError || isRatesError) {
+      showToast({
+        style: Toast.Style.Failure,
+        title: "Something went wrong",
+        message: isAccountsError ? "Failed to load accounts" : "Failed to load currency rates",
+      });
+    }
+  }, [isAccountsError, isRatesError]);
+
   const { accounts, jars } = accountsData;
 
   function onCategoryChange(newValue: Category) {
@@ -84,7 +95,7 @@ export default function Command() {
   return (
     <List
       isLoading={isLoading}
-      navigationTitle={`Total: ${totalAmount.toFixed(2)}`}
+      navigationTitle={!isRatesError ? `Total: ${totalAmount.toFixed(2)}` : undefined}
       searchBarAccessory={<CategoryDropdown onCategoryChange={onCategoryChange} />}
     >
       {(category === "all" || category === "pinned") && (

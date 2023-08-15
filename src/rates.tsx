@@ -3,16 +3,26 @@ import { useCurrencyRates } from "./hooks/useCurrencyRates";
 import { transformRate } from "./utils/transformRate";
 import { Currency, CurrencyRate } from "./types";
 import { useLocalStorage } from "./hooks/useLocalStorage";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 export default function Command() {
   const [category, setCategory] = useState<Category>("all");
-  const { data, isLoading: isRatesLoading } = useCurrencyRates();
+  const { data, isLoading: isRatesLoading, isError } = useCurrencyRates();
   const {
     data: pinned,
     setData: setPinned,
     isLoading: isPinnedLoadingFromLS,
   } = useLocalStorage<string[]>("pinned-rates", []);
+
+  useEffect(() => {
+    if (isError) {
+      showToast({
+        style: Toast.Style.Failure,
+        title: "Something went wrong",
+        message: "Failed to load currency rates",
+      });
+    }
+  }, [isError]);
 
   function onCategoryChange(newValue: string) {
     setCategory(newValue as Category);
