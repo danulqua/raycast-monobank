@@ -107,7 +107,7 @@ function CategoryDropdown(props: { onCategoryChange: (newValue: string) => void 
   const { onCategoryChange } = props;
 
   return (
-    <List.Dropdown tooltip="Select Category" storeValue={true} onChange={(newValue) => onCategoryChange(newValue)}>
+    <List.Dropdown tooltip="Select Category" storeValue onChange={(newValue) => onCategoryChange(newValue)}>
       <List.Dropdown.Item title="All" value="all" />
       <List.Dropdown.Item title="Pinned" value="pinned" />
     </List.Dropdown>

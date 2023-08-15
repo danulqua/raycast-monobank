@@ -7,11 +7,19 @@ import { Account, Jar, RateResponse } from "./types";
 import { isAccount } from "./utils/typeGuards";
 import { accountTypeColors } from "./data/constants";
 import { useCurrencyRates } from "./hooks/useCurrencyRates";
+import { useState } from "react";
+
+type Category = "all" | "card" | "fop" | "jar";
 
 export default function Command() {
+  const [category, setCategory] = useState<Category>("all");
   const { data: accountsData, isLoading: isAccountsLoading, isError: isAccountsError } = useAccounts();
   const { data: rates, isLoading: isRatesLoading, isError: isRatesError } = useCurrencyRates();
   const { accounts, jars } = accountsData;
+
+  function onCategoryChange(newValue: Category) {
+    setCategory(newValue);
+  }
 
   const transformedAccounts = accounts.map(transformAccount);
   const cards = transformedAccounts.filter((account) => account.type !== "fop");
@@ -24,48 +32,71 @@ export default function Command() {
   const isLoading = isAccountsLoading || isRatesLoading;
 
   return (
-    <List isLoading={isLoading} navigationTitle={`Total: ${totalAmount.toFixed(2)}`}>
-      <List.Section title="Cards">
-        {cards.map((card) => (
-          <List.Item
-            key={card.id}
-            id={card.id}
-            title={getTitle(card)}
-            subtitle={getSubtitle(card)}
-            detail={<List.Item.Detail />}
-            accessories={getAccountAccessories(card)}
-            actions={<AccountActions account={card} />}
-          />
-        ))}
-      </List.Section>
+    <List
+      isLoading={isLoading}
+      navigationTitle={`Total: ${totalAmount.toFixed(2)}`}
+      searchBarAccessory={<CategoryDropdown onCategoryChange={onCategoryChange} />}
+    >
+      {(category === "all" || category === "card") && (
+        <List.Section title="Cards">
+          {cards.map((card) => (
+            <List.Item
+              key={card.id}
+              id={card.id}
+              title={getTitle(card)}
+              subtitle={getSubtitle(card)}
+              detail={<List.Item.Detail />}
+              accessories={getAccountAccessories(card)}
+              actions={<AccountActions account={card} />}
+            />
+          ))}
+        </List.Section>
+      )}
 
-      <List.Section title="FOPs">
-        {fops.map((fop) => (
-          <List.Item
-            key={fop.id}
-            id={fop.id}
-            title={getTitle(fop)}
-            subtitle={getSubtitle(fop)}
-            detail={<List.Item.Detail />}
-            accessories={getAccountAccessories(fop)}
-            actions={<AccountActions account={fop} />}
-          />
-        ))}
-      </List.Section>
+      {(category === "all" || category === "fop") && (
+        <List.Section title="FOPs">
+          {fops.map((fop) => (
+            <List.Item
+              key={fop.id}
+              id={fop.id}
+              title={getTitle(fop)}
+              subtitle={getSubtitle(fop)}
+              detail={<List.Item.Detail />}
+              accessories={getAccountAccessories(fop)}
+              actions={<AccountActions account={fop} />}
+            />
+          ))}
+        </List.Section>
+      )}
 
-      <List.Section title="Jars">
-        {transformedJars.map((jar) => (
-          <List.Item
-            key={jar.id}
-            id={jar.id}
-            title={getTitle(jar)}
-            subtitle={getSubtitle(jar)}
-            accessories={getJarAccessories(jar)}
-            actions={<JarActions jar={jar} />}
-          />
-        ))}
-      </List.Section>
+      {(category === "all" || category === "jar") && (
+        <List.Section title="Jars">
+          {transformedJars.map((jar) => (
+            <List.Item
+              key={jar.id}
+              id={jar.id}
+              title={getTitle(jar)}
+              subtitle={getSubtitle(jar)}
+              accessories={getJarAccessories(jar)}
+              actions={<JarActions jar={jar} />}
+            />
+          ))}
+        </List.Section>
+      )}
     </List>
+  );
+}
+
+function CategoryDropdown(props: { onCategoryChange: (newValue: Category) => void }) {
+  const { onCategoryChange } = props;
+
+  return (
+    <List.Dropdown tooltip="Select Category" storeValue onChange={(newValue) => onCategoryChange(newValue as Category)}>
+      <List.Dropdown.Item title="All" value="all" />
+      <List.Dropdown.Item title="Cards" value="card" />
+      <List.Dropdown.Item title="FOPs" value="fop" />
+      <List.Dropdown.Item title="Jars" value="jar" />
+    </List.Dropdown>
   );
 }
 
