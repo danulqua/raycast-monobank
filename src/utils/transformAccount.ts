@@ -3,7 +3,7 @@ import { Account, AccountResponse, Currency } from "../types";
 import { getEmojiByCurrencyCode } from "./getEmojiByCurrencyCode";
 
 export function transformAccount(account: AccountResponse): Account {
-  const { currencyCode, balance, ...other } = account;
+  const { currencyCode, balance, creditLimit, ...other } = account;
   const currencyCodeRecord = cc.number(currencyCode.toString())!;
 
   const currency: Currency = {
@@ -16,6 +16,7 @@ export function transformAccount(account: AccountResponse): Account {
   return {
     currency,
     balance: balance / 100,
+    creditLimit: creditLimit / 100,
     ...other,
   };
 }

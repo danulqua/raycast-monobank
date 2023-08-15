@@ -18,6 +18,7 @@ type Category = "all" | "pinned" | "card" | "fop" | "jar";
 export default function Command() {
   const [searchText, setSearchText] = useState("");
   const [category, setCategory] = useState<Category>("all");
+  const [isShowingDetail, setIsShowingDetail] = useState(false);
   const { data: accountsData, isLoading: isAccountsLoading, isError: isAccountsError } = useAccounts();
   const { data: rates, isLoading: isRatesLoading, isError: isRatesError } = useCurrencyRates();
   const {
@@ -70,6 +71,10 @@ export default function Command() {
     setPinned(newPinned);
   }
 
+  function toggleDetails() {
+    setIsShowingDetail((isShowingDetail) => !isShowingDetail);
+  }
+
   function getValidRearrangeDirections(item: Account | Jar) {
     return {
       up: pinned.findIndex((pinnedAccount) => pinnedAccount === item.id) > 0,
@@ -120,6 +125,7 @@ export default function Command() {
   return (
     <List
       isLoading={isLoading}
+      isShowingDetail={isShowingDetail}
       navigationTitle={!isRatesError ? `Total: ${totalAmount.toFixed(2)}` : undefined}
       searchBarAccessory={<CategoryDropdown onCategoryChange={onCategoryChange} />}
       onSearchTextChange={setSearchText}
@@ -132,7 +138,13 @@ export default function Command() {
               id={account.id}
               title={getTitle(account)}
               subtitle={getSubtitle(account)}
-              accessories={isAccount(account) ? getAccountAccessories(account) : getJarAccessories(account)}
+              accessories={
+                isShowingDetail
+                  ? isAccount(account)
+                    ? getAccountAccessories(account)
+                    : getJarAccessories(account)
+                  : null
+              }
               actions={
                 isAccount(account) ? (
                   <AccountActions
@@ -141,6 +153,7 @@ export default function Command() {
                     validRearrangeDirections={getValidRearrangeDirections(account)}
                     onPin={onPin}
                     onRearrange={onRearrange}
+                    onToggleDetails={toggleDetails}
                   />
                 ) : (
                   <JarActions
@@ -149,6 +162,7 @@ export default function Command() {
                     validRearrangeDirections={getValidRearrangeDirections(account)}
                     onPin={onPin}
                     onRearrange={onRearrange}
+                    onToggleDetails={toggleDetails}
                   />
                 )
               }
@@ -165,9 +179,9 @@ export default function Command() {
               id={card.id}
               title={getTitle(card)}
               subtitle={getSubtitle(card)}
-              detail={<List.Item.Detail />}
-              accessories={getAccountAccessories(card)}
-              actions={<AccountActions account={card} isPinned={false} onPin={onPin} />}
+              detail={<AccountDetails account={card} />}
+              accessories={!isShowingDetail ? getAccountAccessories(card) : null}
+              actions={<AccountActions account={card} isPinned={false} onPin={onPin} onToggleDetails={toggleDetails} />}
             />
           ))}
         </List.Section>
@@ -181,9 +195,9 @@ export default function Command() {
               id={fop.id}
               title={getTitle(fop)}
               subtitle={getSubtitle(fop)}
-              detail={<List.Item.Detail />}
-              accessories={getAccountAccessories(fop)}
-              actions={<AccountActions account={fop} isPinned={false} onPin={onPin} />}
+              detail={<AccountDetails account={fop} />}
+              accessories={!isShowingDetail ? getAccountAccessories(fop) : null}
+              actions={<AccountActions account={fop} isPinned={false} onPin={onPin} onToggleDetails={toggleDetails} />}
             />
           ))}
         </List.Section>
@@ -197,8 +211,8 @@ export default function Command() {
               id={jar.id}
               title={getTitle(jar)}
               subtitle={getSubtitle(jar)}
-              accessories={getJarAccessories(jar)}
-              actions={<JarActions jar={jar} isPinned={false} onPin={onPin} />}
+              accessories={!isShowingDetail ? getJarAccessories(jar) : null}
+              actions={<JarActions jar={jar} isPinned={false} onPin={onPin} onToggleDetails={toggleDetails} />}
             />
           ))}
         </List.Section>
@@ -246,14 +260,64 @@ function getAccountAccessories(account: Account): List.Item.Accessory[] {
   ];
 }
 
+function AccountDetails(props: { account: Account }) {
+  const { account } = props;
+
+  return (
+    <List.Item.Detail
+      metadata={
+        <List.Item.Detail.Metadata>
+          <List.Item.Detail.Metadata.Label title="ID" text={account.id} />
+          <List.Item.Detail.Metadata.Separator />
+
+          {account.maskedPan.length && (
+            <>
+              <List.Item.Detail.Metadata.Label title="Masked Pan" text={account.maskedPan[0]} />
+              <List.Item.Detail.Metadata.Separator />
+            </>
+          )}
+
+          <List.Item.Detail.Metadata.Label title="IBAN" text={account.iban} />
+          <List.Item.Detail.Metadata.Separator />
+
+          <List.Item.Detail.Metadata.TagList title="Type">
+            <List.Item.Detail.Metadata.TagList.Item text={account.type} color={accountTypeColors[account.type]} />
+          </List.Item.Detail.Metadata.TagList>
+          <List.Item.Detail.Metadata.Separator />
+
+          <List.Item.Detail.Metadata.Label
+            title="Currency"
+            text={account.currency.flag + " " + account.currency.code + ", " + account.currency.name}
+          />
+          <List.Item.Detail.Metadata.Separator />
+
+          <List.Item.Detail.Metadata.Label title="Balance" text={account.balance.toFixed(2)} />
+          <List.Item.Detail.Metadata.Separator />
+
+          <List.Item.Detail.Metadata.Label title="Credit Limit" text={account.creditLimit.toFixed(2)} />
+          <List.Item.Detail.Metadata.Separator />
+
+          {account.cashbackType && (
+            <>
+              <List.Item.Detail.Metadata.Label title="Cashback Type" text={account.cashbackType} />
+              <List.Item.Detail.Metadata.Separator />
+            </>
+          )}
+        </List.Item.Detail.Metadata>
+      }
+    />
+  );
+}
+
 function AccountActions(props: {
   account: Account;
   isPinned: boolean;
   validRearrangeDirections?: { up: boolean; down: boolean };
   onPin: (account: Account) => void;
   onRearrange?: (account: Account, direction: "up" | "down") => void;
+  onToggleDetails: () => void;
 }) {
-  const { account, isPinned, validRearrangeDirections, onPin, onRearrange } = props;
+  const { account, isPinned, validRearrangeDirections, onPin, onRearrange, onToggleDetails } = props;
 
   const sendUrl = `https://send.monobank.ua/${account.sendId}`;
 
@@ -270,6 +334,12 @@ function AccountActions(props: {
           title="Copy IBAN"
           content={account.iban}
           shortcut={{ modifiers: ["cmd", "shift"], key: "enter" }}
+        />
+        <Action
+          title="Toggle Details"
+          icon={Icon.Sidebar}
+          shortcut={{ modifiers: ["cmd", "shift"], key: "d" }}
+          onAction={onToggleDetails}
         />
       </ActionPanel.Section>
 
@@ -330,8 +400,9 @@ function JarActions(props: {
   validRearrangeDirections?: { up: boolean; down: boolean };
   onPin: (account: Jar) => void;
   onRearrange?: (account: Jar, direction: "up" | "down") => void;
+  onToggleDetails: () => void;
 }) {
-  const { jar, isPinned, validRearrangeDirections, onPin, onRearrange } = props;
+  const { jar, isPinned, validRearrangeDirections, onPin, onRearrange, onToggleDetails } = props;
 
   const sendUrl = `https://send.monobank.ua/${jar.sendId}`;
 
@@ -340,6 +411,12 @@ function JarActions(props: {
       <ActionPanel.Section>
         <Action.OpenInBrowser title="Open Top Up Page" url={sendUrl} />
         <Action.CopyToClipboard title="Copy Top Up Page URL" icon={Icon.Link} content={sendUrl} />
+        <Action
+          title="Toggle Details"
+          icon={Icon.Sidebar}
+          shortcut={{ modifiers: ["cmd", "shift"], key: "d" }}
+          onAction={onToggleDetails}
+        />
       </ActionPanel.Section>
 
       <ActionPanel.Section>
