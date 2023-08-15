@@ -10,7 +10,7 @@ export interface Account {
   creditLimit: number;
   type: AccountType;
   currency: Currency;
-  cashbackType: CashbackType;
+  cashbackType?: CashbackType;
   maskedPan: string[];
   iban: string;
 }

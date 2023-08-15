@@ -11,25 +11,64 @@ export default function Command() {
   const { accounts, jars } = data;
 
   const transformedAccounts = accounts.map(transformAccount);
+  const cards = transformedAccounts.filter((account) => account.type !== "fop");
+  const fops = transformedAccounts.filter((account) => account.type === "fop");
+
   const transformedJars = jars.map(transformJar);
 
   return (
     <List isLoading={isLoading}>
-      <List.Section title="Accounts">
-        {transformedAccounts.length ? (
-          transformedAccounts.map((account) => {
-            const maskedPan = account.maskedPan.length ? account.maskedPan[0] : "";
-            return (
-              <List.Item
-                key={account.id}
-                id={account.id}
-                title={getTitle(account)}
-                subtitle={getSubtitle(account)}
-                accessories={[{ text: maskedPan }]}
-                actions={<AccountActions account={account} />}
-              />
-            );
-          })
+      <List.Section title="Cards">
+        {cards.length ? (
+          cards.map((card) => (
+            <List.Item
+              key={card.id}
+              id={card.id}
+              title={getTitle(card)}
+              subtitle={getSubtitle(card)}
+              detail={
+                <List.Item.Detail
+                  metadata={
+                    <List.Item.Detail.Metadata>
+                      {Object.entries(card).map(([key, value]) => (
+                        <List.Item.Detail.Metadata.Label key={key} title={key} text={value} />
+                      ))}
+                    </List.Item.Detail.Metadata>
+                  }
+                />
+              }
+              accessories={[{ text: card.maskedPan[0] }]}
+              actions={<AccountActions account={card} />}
+            />
+          ))
+        ) : (
+          <List.EmptyView />
+        )}
+      </List.Section>
+
+      <List.Section title="FOPs">
+        {fops.length ? (
+          fops.map((fop) => (
+            <List.Item
+              key={fop.id}
+              id={fop.id}
+              title={getTitle(fop)}
+              subtitle={getSubtitle(fop)}
+              detail={
+                <List.Item.Detail
+                  metadata={
+                    <List.Item.Detail.Metadata>
+                      {Object.entries(fop).map(([key, value]) => (
+                        <List.Item.Detail.Metadata.Label key={key} title={key} text={value} />
+                      ))}
+                    </List.Item.Detail.Metadata>
+                  }
+                />
+              }
+              accessories={[{ text: fop.iban }]}
+              actions={<AccountActions account={fop} />}
+            />
+          ))
         ) : (
           <List.EmptyView />
         )}
@@ -101,7 +140,7 @@ function getJarAccessories(jar: Jar): List.Item.Accessory[] {
   return [
     {
       icon:
-        progress >= 1 ? { source: Icon.CheckCircle, tintColor: Color.Green } : getProgressIcon(progress, Color.Green),
+        progress < 1 ? getProgressIcon(progress, Color.Green) : { source: Icon.CheckCircle, tintColor: Color.Green },
       text: "Progress",
     },
   ];
