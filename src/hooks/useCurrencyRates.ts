@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useLocalStorage } from "./useLocalStorage";
 import { RateResponse } from "../types";
-import { filterRates } from "../utils/filterRates";
+import { filterRates } from "../utils";
 import api from "../api";
 
 interface LocalStorageRatesData {

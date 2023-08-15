@@ -5,6 +5,7 @@ export type CashbackType = "None" | "UAH" | "Miles";
 
 export interface Account {
   id: string;
+  title: string;
   sendId: string;
   balance: number;
   creditLimit: number;

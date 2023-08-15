@@ -9,7 +9,7 @@ export interface RateResponse {
   rateSell: number;
 }
 
-export interface AccountsResponse {
+export interface UserInfoResponse {
   clientId: string;
   name: string;
   webHookUrl: string;

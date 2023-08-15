@@ -1,16 +1,24 @@
 import { useEffect, useState } from "react";
 import { useLocalStorage } from "./useLocalStorage";
-import { AccountsResponse, Preferences } from "../types";
+import { Account, UserInfoResponse, Jar, Preferences } from "../types";
 import api from "../api";
 import { getPreferenceValues } from "@raycast/api";
+import { transformAccount, transformJar } from "../utils";
 
-interface LocalStorageAccountsData {
-  accounts: AccountsResponse;
+interface LocalStorageUserInfoData {
+  clientInfo: {
+    clientId: string;
+    name: string;
+    webHookUrl: string;
+    permissions: string;
+    accounts: Account[];
+    jars: Jar[];
+  };
   lastUpdated: number;
 }
 
-const lsInitialValue: LocalStorageAccountsData = {
-  accounts: {
+const lsInitialValue: LocalStorageUserInfoData = {
+  clientInfo: {
     clientId: "",
     name: "",
     webHookUrl: "",
@@ -29,7 +37,7 @@ export function useAccounts() {
     data,
     setData,
     isLoading: isLoadingFromLS,
-  } = useLocalStorage<LocalStorageAccountsData>("accounts", lsInitialValue);
+  } = useLocalStorage<LocalStorageUserInfoData>("clientInfo", lsInitialValue);
 
   const { token } = getPreferenceValues<Preferences>();
 
@@ -39,11 +47,32 @@ export function useAccounts() {
     const now = Date.now();
     if (now - data.lastUpdated <= 1000 * 60) return;
 
-    fetchAccounts().then((accounts) => {
-      setData({
-        accounts,
-        lastUpdated: now,
-      });
+    fetchAccounts().then((clientInfo) => {
+      if (!clientInfo) {
+        setData({
+          clientInfo: { ...data.clientInfo, accounts: data.clientInfo.accounts, jars: data.clientInfo.jars },
+          lastUpdated: now,
+        });
+      } else {
+        const jars = clientInfo.jars.map(transformJar);
+
+        const accounts = clientInfo.accounts.map(transformAccount);
+        const updatedAccounts = accounts.map((account) => {
+          const savedAccount = data.clientInfo.accounts.find((savedAccount) => savedAccount.id === account.id);
+          if (!savedAccount) return account;
+
+          const { title, ...other } = account;
+          return {
+            title: savedAccount.title,
+            ...other,
+          };
+        });
+
+        setData({
+          clientInfo: { ...clientInfo, accounts: updatedAccounts, jars },
+          lastUpdated: now,
+        });
+      }
     });
   }, [isLoadingFromLS]);
 
@@ -52,7 +81,7 @@ export function useAccounts() {
     setIsError(false);
 
     try {
-      const response = await api.get<AccountsResponse>("/personal/client-info", {
+      const response = await api.get<UserInfoResponse>("/personal/client-info", {
         headers: {
           "X-Token": token,
         },
@@ -62,14 +91,14 @@ export function useAccounts() {
     } catch (error) {
       console.error(error);
       setIsError(true);
-      return data.accounts || {};
     } finally {
       setIsLoading(false);
     }
   }
 
   return {
-    data: data.accounts,
+    data: data.clientInfo,
+    setData,
     isLoading: isLoading || isLoadingFromLS,
     isError,
   };

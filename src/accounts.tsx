@@ -1,18 +1,13 @@
 import { Action, ActionPanel, Color, Icon, List, Toast, showToast } from "@raycast/api";
 import { getProgressIcon } from "@raycast/utils";
 import { useAccounts } from "./hooks/useAccounts";
-import { transformAccount } from "./utils/transformAccount";
-import { transformJar } from "./utils/transformJar";
 import { Account, Jar } from "./types";
 import { isAccount } from "./utils/typeGuards";
 import { accountTypeColors } from "./data/constants";
 import { useCurrencyRates } from "./hooks/useCurrencyRates";
 import { useEffect, useState } from "react";
-import { calculateTotal } from "./utils/calculateTotal";
+import { calculateTotal, satisfiesTexts, filterPinnedItems, formatCurrency } from "./utils";
 import { useLocalStorage } from "./hooks/useLocalStorage";
-import { satisfiesTexts } from "./utils/includesText";
-import { filterPinnedItems } from "./utils/filterPinned";
-import { formatCurrency } from "./utils/formatCurrency";
 
 type Category = "all" | "pinned" | "card" | "fop" | "jar";
 
@@ -20,13 +15,14 @@ export default function Command() {
   const [searchText, setSearchText] = useState("");
   const [category, setCategory] = useState<Category>("all");
   const [isShowingDetail, setIsShowingDetail] = useState(false);
-  const { data: accountsData, isLoading: isAccountsLoading, isError: isAccountsError } = useAccounts();
+  const { data: clientInfo, isLoading: isClientInfoLoading, isError: isAccountsError } = useAccounts();
   const { data: rates, isLoading: isRatesLoading, isError: isRatesError } = useCurrencyRates();
   const {
     data: pinned,
     setData: setPinned,
     isLoading: isPinnedLoadingFromLS,
-  } = useLocalStorage<string[]>("pinned-accounts", []);
+  } = useLocalStorage<string[]>("pinnedAccounts", []);
+  const { accounts, jars } = clientInfo;
 
   useEffect(() => {
     if (isAccountsError || isRatesError) {
@@ -37,8 +33,6 @@ export default function Command() {
       });
     }
   }, [isAccountsError, isRatesError]);
-
-  const { accounts, jars } = accountsData;
 
   function onCategoryChange(newValue: Category) {
     setCategory(newValue);
@@ -83,17 +77,11 @@ export default function Command() {
     };
   }
 
-  const transformedAccounts = accounts.map(transformAccount);
-  const cards = transformedAccounts.filter((account) => account.type !== "fop");
-  const fops = transformedAccounts.filter((account) => account.type === "fop");
-
-  const transformedJars = jars.map(transformJar);
+  const cards = accounts.filter((account) => account.type !== "fop");
+  const fops = accounts.filter((account) => account.type === "fop");
 
   const pinnedAccounts = pinned
-    .map(
-      (pinnedAccountId) =>
-        [...transformedAccounts, ...transformedJars].find((account) => account.id === pinnedAccountId)!
-    )
+    .map((pinnedAccountId) => [...accounts, ...jars].find((account) => account.id === pinnedAccountId)!)
     .filter((account) => {
       if (isAccount(account)) {
         return satisfiesTexts(
@@ -108,20 +96,20 @@ export default function Command() {
     });
 
   const filteredCards = filterPinnedItems({ category, items: cards, pinned }).filter((card) =>
-    satisfiesTexts(searchText, card.currency.code, card.type, card.maskedPan[0])
+    satisfiesTexts(searchText, card.title, card.currency.code, card.type, card.maskedPan[0])
   );
 
   const filteredFops = filterPinnedItems({ category, items: fops, pinned }).filter((fop) =>
-    satisfiesTexts(searchText, fop.currency.code, fop.type, fop.iban)
+    satisfiesTexts(searchText, fop.title, fop.currency.code, fop.type, fop.iban)
   );
 
-  const filteredJars = filterPinnedItems({ category, items: transformedJars, pinned }).filter((jar) =>
-    satisfiesTexts(searchText, jar.currency.code, jar.title)
+  const filteredJars = filterPinnedItems({ category, items: jars, pinned }).filter((jar) =>
+    satisfiesTexts(searchText, jar.title, jar.currency.code)
   );
 
-  const totalAmount = calculateTotal([...cards, ...fops, ...transformedJars], rates);
+  const totalAmount = calculateTotal([...cards, ...fops, ...jars], rates);
 
-  const isLoading = isAccountsLoading || isRatesLoading || isPinnedLoadingFromLS;
+  const isLoading = isClientInfoLoading || isRatesLoading || isPinnedLoadingFromLS;
 
   return (
     <List
@@ -189,7 +177,7 @@ export default function Command() {
       )}
 
       {(category === "all" || category === "fop") && (
-        <List.Section title="FOPs">
+        <List.Section title="PEs">
           {filteredFops.map((fop) => (
             <List.Item
               key={fop.id}
@@ -234,7 +222,7 @@ function CategoryDropdown(props: { onCategoryChange: (newValue: Category) => voi
       </List.Dropdown.Section>
       <List.Dropdown.Section>
         <List.Dropdown.Item title="Cards" value="card" />
-        <List.Dropdown.Item title="FOPs" value="fop" />
+        <List.Dropdown.Item title="PEs" value="fop" />
         <List.Dropdown.Item title="Jars" value="jar" />
       </List.Dropdown.Section>
     </List.Dropdown>
@@ -243,10 +231,11 @@ function CategoryDropdown(props: { onCategoryChange: (newValue: Category) => voi
 
 function getTitle(item: Account | Jar) {
   if (isAccount(item)) {
-    return `${item.currency.flag} ${item.currency.code}`;
+    const panOrIban = item.maskedPan.length ? item.maskedPan[0] : item.iban;
+    return `${item.currency.flag} ${item.title ? item.title : panOrIban}`;
   }
 
-  return `${item.currency.flag} ${item.currency.code} – ${item.title}`;
+  return item.currency.flag + " " + item.title;
 }
 
 function getSubtitle(item: Account | Jar) {
@@ -256,10 +245,11 @@ function getSubtitle(item: Account | Jar) {
 function getAccountAccessories(account: Account): List.Item.Accessory[] {
   const color = accountTypeColors[account.type];
 
-  return [
-    { text: account.type === "fop" ? account.iban : account.maskedPan[0] },
-    { tag: { value: account.type, color } },
-  ];
+  const panOrIban = account.type === "fop" ? account.iban : account.maskedPan[0];
+
+  return account.title
+    ? [{ text: panOrIban }, { tag: { value: account.type, color } }]
+    : [{ tag: { value: account.type, color } }];
 }
 
 function AccountDetail(props: { account: Account }) {
@@ -274,12 +264,12 @@ function AccountDetail(props: { account: Account }) {
           <List.Item.Detail.Metadata.Label title="ID" text={account.id} />
           <List.Item.Detail.Metadata.Separator />
 
-          {account.maskedPan.length && (
+          {account.maskedPan.length ? (
             <>
               <List.Item.Detail.Metadata.Label title="Masked Pan" text={account.maskedPan[0]} />
               <List.Item.Detail.Metadata.Separator />
             </>
-          )}
+          ) : undefined}
 
           <List.Item.Detail.Metadata.Label title="IBAN" text={account.iban} />
           <List.Item.Detail.Metadata.Separator />
@@ -307,20 +297,20 @@ function AccountDetail(props: { account: Account }) {
           />
           <List.Item.Detail.Metadata.Separator />
 
-          {account.cashbackType && (
+          {account.cashbackType ? (
             <>
               <List.Item.Detail.Metadata.Label title="Cashback Type" text={account.cashbackType} />
               <List.Item.Detail.Metadata.Separator />
             </>
-          )}
+          ) : undefined}
 
-          {hasTopUpPage && (
+          {hasTopUpPage ? (
             <List.Item.Detail.Metadata.Link
               title="Top Up Page URL"
               text={`https://send.monobank.ua/${account.sendId}`}
               target={`https://send.monobank.ua/${account.sendId}`}
             />
-          )}
+          ) : undefined}
         </List.Item.Detail.Metadata>
       }
     />

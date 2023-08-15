@@ -14,6 +14,7 @@ export function transformAccount(account: AccountResponse): Account {
   };
 
   return {
+    title: "",
     currency,
     balance: balance / 100,
     creditLimit: creditLimit / 100,

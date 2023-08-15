@@ -1,6 +1,6 @@
 import { ActionPanel, Action, List, Icon, showToast, Toast } from "@raycast/api";
 import { useCurrencyRates } from "./hooks/useCurrencyRates";
-import { transformRate } from "./utils/transformRate";
+import { transformRate } from "./utils";
 import { Currency, CurrencyRate } from "./types";
 import { useLocalStorage } from "./hooks/useLocalStorage";
 import { useEffect, useState } from "react";
@@ -12,7 +12,7 @@ export default function Command() {
     data: pinned,
     setData: setPinned,
     isLoading: isPinnedLoadingFromLS,
-  } = useLocalStorage<string[]>("pinned-rates", []);
+  } = useLocalStorage<string[]>("pinnedRates", []);
 
   useEffect(() => {
     if (isError) {
