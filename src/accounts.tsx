@@ -10,10 +10,13 @@ import { useCurrencyRates } from "./hooks/useCurrencyRates";
 import { useEffect, useState } from "react";
 import { calculateTotal } from "./utils/calculateTotal";
 import { useLocalStorage } from "./hooks/useLocalStorage";
+import { satisfiesTexts } from "./utils/includesText";
+import { filterPinnedItems } from "./utils/filterPinned";
 
 type Category = "all" | "pinned" | "card" | "fop" | "jar";
 
 export default function Command() {
+  const [searchText, setSearchText] = useState("");
   const [category, setCategory] = useState<Category>("all");
   const { data: accountsData, isLoading: isAccountsLoading, isError: isAccountsError } = useAccounts();
   const { data: rates, isLoading: isRatesLoading, isError: isRatesError } = useCurrencyRates();
@@ -80,13 +83,35 @@ export default function Command() {
 
   const transformedJars = jars.map(transformJar);
 
-  const pinnedAccounts = pinned.map(
-    (pinnedAccountId) => [...transformedAccounts, ...transformedJars].find((account) => account.id === pinnedAccountId)!
+  const pinnedAccounts = pinned
+    .map(
+      (pinnedAccountId) =>
+        [...transformedAccounts, ...transformedJars].find((account) => account.id === pinnedAccountId)!
+    )
+    .filter((account) => {
+      if (isAccount(account)) {
+        return satisfiesTexts(
+          searchText,
+          account.currency.code,
+          account.type,
+          account.maskedPan.length ? account.maskedPan[0] : account.iban
+        );
+      }
+
+      return satisfiesTexts(searchText, account.currency.code, account.title);
+    });
+
+  const filteredCards = filterPinnedItems({ category, items: cards, pinned }).filter((card) =>
+    satisfiesTexts(searchText, card.currency.code, card.type, card.maskedPan[0])
   );
 
-  const filteredCards = category === "all" ? cards.filter((card) => !pinned.includes(card.id)) : cards;
-  const filteredFops = category === "all" ? fops.filter((fop) => !pinned.includes(fop.id)) : fops;
-  const filteredJars = category === "all" ? transformedJars.filter((jar) => !pinned.includes(jar.id)) : transformedJars;
+  const filteredFops = filterPinnedItems({ category, items: fops, pinned }).filter((fop) =>
+    satisfiesTexts(searchText, fop.currency.code, fop.type, fop.iban)
+  );
+
+  const filteredJars = filterPinnedItems({ category, items: transformedJars, pinned }).filter((jar) =>
+    satisfiesTexts(searchText, jar.currency.code, jar.title)
+  );
 
   const totalAmount = calculateTotal([...cards, ...fops, ...transformedJars], rates);
 
@@ -97,6 +122,7 @@ export default function Command() {
       isLoading={isLoading}
       navigationTitle={!isRatesError ? `Total: ${totalAmount.toFixed(2)}` : undefined}
       searchBarAccessory={<CategoryDropdown onCategoryChange={onCategoryChange} />}
+      onSearchTextChange={setSearchText}
     >
       {(category === "all" || category === "pinned") && (
         <List.Section title="Pinned">
@@ -201,10 +227,10 @@ function CategoryDropdown(props: { onCategoryChange: (newValue: Category) => voi
 
 function getTitle(item: Account | Jar) {
   if (isAccount(item)) {
-    return `${item.currency.flag} ${item.currency.code}, ${item.type}`;
+    return `${item.currency.flag} ${item.currency.code}`;
   }
 
-  return `${item.currency.flag} ${item.currency.code}, ${item.title}`;
+  return `${item.currency.flag} ${item.currency.code} – ${item.title}`;
 }
 
 function getSubtitle(item: Account | Jar) {
