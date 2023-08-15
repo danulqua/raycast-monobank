@@ -5,6 +5,7 @@ import { transformAccount } from "./utils/transformAccount";
 import { transformJar } from "./utils/transformJar";
 import { Account, Jar } from "./types";
 import { isAccount } from "./utils/typeGuards";
+import { accountTypeColors } from "./data/constants";
 
 export default function Command() {
   const { data, isLoading, isError } = useAccounts();
@@ -19,76 +20,44 @@ export default function Command() {
   return (
     <List isLoading={isLoading}>
       <List.Section title="Cards">
-        {cards.length ? (
-          cards.map((card) => (
-            <List.Item
-              key={card.id}
-              id={card.id}
-              title={getTitle(card)}
-              subtitle={getSubtitle(card)}
-              detail={
-                <List.Item.Detail
-                  metadata={
-                    <List.Item.Detail.Metadata>
-                      {Object.entries(card).map(([key, value]) => (
-                        <List.Item.Detail.Metadata.Label key={key} title={key} text={value} />
-                      ))}
-                    </List.Item.Detail.Metadata>
-                  }
-                />
-              }
-              accessories={[{ text: card.maskedPan[0] }]}
-              actions={<AccountActions account={card} />}
-            />
-          ))
-        ) : (
-          <List.EmptyView />
-        )}
+        {cards.map((card) => (
+          <List.Item
+            key={card.id}
+            id={card.id}
+            title={getTitle(card)}
+            subtitle={getSubtitle(card)}
+            detail={<List.Item.Detail />}
+            accessories={getAccountAccessories(card)}
+            actions={<AccountActions account={card} />}
+          />
+        ))}
       </List.Section>
 
       <List.Section title="FOPs">
-        {fops.length ? (
-          fops.map((fop) => (
-            <List.Item
-              key={fop.id}
-              id={fop.id}
-              title={getTitle(fop)}
-              subtitle={getSubtitle(fop)}
-              detail={
-                <List.Item.Detail
-                  metadata={
-                    <List.Item.Detail.Metadata>
-                      {Object.entries(fop).map(([key, value]) => (
-                        <List.Item.Detail.Metadata.Label key={key} title={key} text={value} />
-                      ))}
-                    </List.Item.Detail.Metadata>
-                  }
-                />
-              }
-              accessories={[{ text: fop.iban }]}
-              actions={<AccountActions account={fop} />}
-            />
-          ))
-        ) : (
-          <List.EmptyView />
-        )}
+        {fops.map((fop) => (
+          <List.Item
+            key={fop.id}
+            id={fop.id}
+            title={getTitle(fop)}
+            subtitle={getSubtitle(fop)}
+            detail={<List.Item.Detail />}
+            accessories={getAccountAccessories(fop)}
+            actions={<AccountActions account={fop} />}
+          />
+        ))}
       </List.Section>
 
       <List.Section title="Jars">
-        {transformedJars.length ? (
-          transformedJars.map((jar) => (
-            <List.Item
-              key={jar.id}
-              id={jar.id}
-              title={getTitle(jar)}
-              subtitle={getSubtitle(jar)}
-              accessories={getJarAccessories(jar)}
-              actions={<JarActions jar={jar} />}
-            />
-          ))
-        ) : (
-          <List.EmptyView />
-        )}
+        {transformedJars.map((jar) => (
+          <List.Item
+            key={jar.id}
+            id={jar.id}
+            title={getTitle(jar)}
+            subtitle={getSubtitle(jar)}
+            accessories={getJarAccessories(jar)}
+            actions={<JarActions jar={jar} />}
+          />
+        ))}
       </List.Section>
     </List>
   );
@@ -108,6 +77,15 @@ function getSubtitle(item: Account | Jar) {
   }
 
   return item.goal ? `${item.balance.toFixed(2)} / ${item.goal.toFixed(2)}` : `${item.balance.toFixed(2)}`;
+}
+
+function getAccountAccessories(account: Account): List.Item.Accessory[] {
+  const color = accountTypeColors[account.type];
+
+  return [
+    { text: account.type === "fop" ? account.iban : account.maskedPan[0] },
+    { tag: { value: account.type, color } },
+  ];
 }
 
 function AccountActions(props: { account: Account }) {
