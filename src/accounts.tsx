@@ -12,6 +12,7 @@ import { calculateTotal } from "./utils/calculateTotal";
 import { useLocalStorage } from "./hooks/useLocalStorage";
 import { satisfiesTexts } from "./utils/includesText";
 import { filterPinnedItems } from "./utils/filterPinned";
+import { formatCurrency } from "./utils/formatCurrency";
 
 type Category = "all" | "pinned" | "card" | "fop" | "jar";
 
@@ -126,7 +127,7 @@ export default function Command() {
     <List
       isLoading={isLoading}
       isShowingDetail={isShowingDetail}
-      navigationTitle={!isRatesError ? `Total: ${totalAmount.toFixed(2)}` : undefined}
+      navigationTitle={!isRatesError ? `Total: ${formatCurrency(totalAmount, "UAH")}` : undefined}
       searchBarAccessory={<CategoryDropdown onCategoryChange={onCategoryChange} />}
       onSearchTextChange={setSearchText}
     >
@@ -249,7 +250,7 @@ function getTitle(item: Account | Jar) {
 }
 
 function getSubtitle(item: Account | Jar) {
-  return item.balance.toFixed(2);
+  return formatCurrency(item.balance, item.currency.code);
 }
 
 function getAccountAccessories(account: Account): List.Item.Accessory[] {
@@ -294,10 +295,16 @@ function AccountDetail(props: { account: Account }) {
           />
           <List.Item.Detail.Metadata.Separator />
 
-          <List.Item.Detail.Metadata.Label title="Balance" text={account.balance.toFixed(2)} />
+          <List.Item.Detail.Metadata.Label
+            title="Balance"
+            text={formatCurrency(account.balance, account.currency.code)}
+          />
           <List.Item.Detail.Metadata.Separator />
 
-          <List.Item.Detail.Metadata.Label title="Credit Limit" text={account.creditLimit.toFixed(2)} />
+          <List.Item.Detail.Metadata.Label
+            title="Credit Limit"
+            text={formatCurrency(account.creditLimit, account.currency.code)}
+          />
           <List.Item.Detail.Metadata.Separator />
 
           {account.cashbackType && (
@@ -395,7 +402,7 @@ function getJarAccessories(jar: Jar): List.Item.Accessory[] {
 
   return [
     {
-      text: jar.goal.toFixed(2),
+      text: formatCurrency(jar.goal, jar.currency.code),
     },
     {
       icon:
@@ -427,10 +434,13 @@ function JarDetail(props: { jar: Jar }) {
           />
           <List.Item.Detail.Metadata.Separator />
 
-          <List.Item.Detail.Metadata.Label title="Balance" text={jar.balance.toFixed(2)} />
+          <List.Item.Detail.Metadata.Label title="Balance" text={formatCurrency(jar.balance, jar.currency.code)} />
           <List.Item.Detail.Metadata.Separator />
 
-          <List.Item.Detail.Metadata.Label title="Goal" text={jar.goal ? jar.goal.toFixed(2) : "No goal"} />
+          <List.Item.Detail.Metadata.Label
+            title="Goal"
+            text={jar.goal ? formatCurrency(jar.goal, jar.currency.code) : "No goal"}
+          />
           <List.Item.Detail.Metadata.Separator />
 
           <List.Item.Detail.Metadata.Link

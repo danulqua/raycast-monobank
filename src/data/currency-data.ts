@@ -100,7 +100,6 @@ export const currencyCodesToEmoji: Record<string, string> = {
   QAR: "🇶🇦",
   RON: "🇷🇴",
   RSD: "🇷🇸",
-  RUB: "🇷🇺",
   RWF: "🇷🇼",
   SAR: "🇸🇦",
   SBD: "🇸🇧",
