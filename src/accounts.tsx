@@ -179,7 +179,7 @@ export default function Command() {
               id={card.id}
               title={getTitle(card)}
               subtitle={getSubtitle(card)}
-              detail={<AccountDetails account={card} />}
+              detail={<AccountDetail account={card} />}
               accessories={!isShowingDetail ? getAccountAccessories(card) : null}
               actions={<AccountActions account={card} isPinned={false} onPin={onPin} onToggleDetails={toggleDetails} />}
             />
@@ -195,7 +195,7 @@ export default function Command() {
               id={fop.id}
               title={getTitle(fop)}
               subtitle={getSubtitle(fop)}
-              detail={<AccountDetails account={fop} />}
+              detail={<AccountDetail account={fop} />}
               accessories={!isShowingDetail ? getAccountAccessories(fop) : null}
               actions={<AccountActions account={fop} isPinned={false} onPin={onPin} onToggleDetails={toggleDetails} />}
             />
@@ -211,6 +211,7 @@ export default function Command() {
               id={jar.id}
               title={getTitle(jar)}
               subtitle={getSubtitle(jar)}
+              detail={<JarDetail jar={jar} />}
               accessories={!isShowingDetail ? getJarAccessories(jar) : null}
               actions={<JarActions jar={jar} isPinned={false} onPin={onPin} onToggleDetails={toggleDetails} />}
             />
@@ -260,8 +261,10 @@ function getAccountAccessories(account: Account): List.Item.Accessory[] {
   ];
 }
 
-function AccountDetails(props: { account: Account }) {
+function AccountDetail(props: { account: Account }) {
   const { account } = props;
+
+  const hasTopUpPage = account.sendId && account.currency.code === "UAH";
 
   return (
     <List.Item.Detail
@@ -302,6 +305,14 @@ function AccountDetails(props: { account: Account }) {
               <List.Item.Detail.Metadata.Label title="Cashback Type" text={account.cashbackType} />
               <List.Item.Detail.Metadata.Separator />
             </>
+          )}
+
+          {hasTopUpPage && (
+            <List.Item.Detail.Metadata.Link
+              title="Top Up Page URL"
+              text={`https://send.monobank.ua/${account.sendId}`}
+              target={`https://send.monobank.ua/${account.sendId}`}
+            />
           )}
         </List.Item.Detail.Metadata>
       }
@@ -392,6 +403,45 @@ function getJarAccessories(jar: Jar): List.Item.Accessory[] {
       tooltip: `${percentage}%`,
     },
   ];
+}
+
+function JarDetail(props: { jar: Jar }) {
+  const { jar } = props;
+
+  return (
+    <List.Item.Detail
+      metadata={
+        <List.Item.Detail.Metadata>
+          <List.Item.Detail.Metadata.Label title="ID" text={jar.id} />
+          <List.Item.Detail.Metadata.Separator />
+
+          <List.Item.Detail.Metadata.Label title="Title" text={jar.title} />
+          <List.Item.Detail.Metadata.Separator />
+
+          <List.Item.Detail.Metadata.Label title="Description" text={jar.description} />
+          <List.Item.Detail.Metadata.Separator />
+
+          <List.Item.Detail.Metadata.Label
+            title="Currency"
+            text={jar.currency.flag + " " + jar.currency.code + ", " + jar.currency.name}
+          />
+          <List.Item.Detail.Metadata.Separator />
+
+          <List.Item.Detail.Metadata.Label title="Balance" text={jar.balance.toFixed(2)} />
+          <List.Item.Detail.Metadata.Separator />
+
+          <List.Item.Detail.Metadata.Label title="Goal" text={jar.goal ? jar.goal.toFixed(2) : "No goal"} />
+          <List.Item.Detail.Metadata.Separator />
+
+          <List.Item.Detail.Metadata.Link
+            title="Top Up Page URL"
+            text={`https://send.monobank.ua/${jar.sendId}`}
+            target={`https://send.monobank.ua/${jar.sendId}`}
+          />
+        </List.Item.Detail.Metadata>
+      }
+    />
+  );
 }
 
 function JarActions(props: {
