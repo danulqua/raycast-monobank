@@ -3,13 +3,15 @@ import { getProgressIcon } from "@raycast/utils";
 import { useAccounts } from "./hooks/useAccounts";
 import { transformAccount } from "./utils/transformAccount";
 import { transformJar } from "./utils/transformJar";
-import { Account, Jar } from "./types";
+import { Account, Jar, RateResponse } from "./types";
 import { isAccount } from "./utils/typeGuards";
 import { accountTypeColors } from "./data/constants";
+import { useCurrencyRates } from "./hooks/useCurrencyRates";
 
 export default function Command() {
-  const { data, isLoading, isError } = useAccounts();
-  const { accounts, jars } = data;
+  const { data: accountsData, isLoading: isAccountsLoading, isError: isAccountsError } = useAccounts();
+  const { data: rates, isLoading: isRatesLoading, isError: isRatesError } = useCurrencyRates();
+  const { accounts, jars } = accountsData;
 
   const transformedAccounts = accounts.map(transformAccount);
   const cards = transformedAccounts.filter((account) => account.type !== "fop");
@@ -17,8 +19,12 @@ export default function Command() {
 
   const transformedJars = jars.map(transformJar);
 
+  const totalAmount = calculateTotal([...cards, ...fops, ...transformedJars], rates);
+
+  const isLoading = isAccountsLoading || isRatesLoading;
+
   return (
-    <List isLoading={isLoading}>
+    <List isLoading={isLoading} navigationTitle={`Total: ${totalAmount.toFixed(2)}`}>
       <List.Section title="Cards">
         {cards.map((card) => (
           <List.Item
@@ -63,6 +69,17 @@ export default function Command() {
   );
 }
 
+function calculateTotal(accounts: (Account | Jar)[], rates: RateResponse[]) {
+  return accounts.reduce((total, account) => {
+    if (account.currency.code === "UAH") return total + account.balance;
+    const rate = rates.find((rate) => rate.currencyCodeA === +account.currency.number);
+
+    if (!rate) return total;
+
+    return total + account.balance * rate.rateSell;
+  }, 0);
+}
+
 function getTitle(item: Account | Jar) {
   if (isAccount(item)) {
     return `${item.currency.flag} ${item.currency.code}, ${item.type}`;
@@ -72,11 +89,7 @@ function getTitle(item: Account | Jar) {
 }
 
 function getSubtitle(item: Account | Jar) {
-  if (isAccount(item)) {
-    return item.balance.toFixed(2);
-  }
-
-  return item.goal ? `${item.balance.toFixed(2)} / ${item.goal.toFixed(2)}` : `${item.balance.toFixed(2)}`;
+  return item.balance.toFixed(2);
 }
 
 function getAccountAccessories(account: Account): List.Item.Accessory[] {
@@ -112,14 +125,18 @@ function AccountActions(props: { account: Account }) {
 
 function getJarAccessories(jar: Jar): List.Item.Accessory[] {
   const progress = jar.balance / jar.goal;
+  const percentage = (progress * 100).toFixed(2);
 
   if (!jar.goal) return [{ text: "No goal" }];
 
   return [
     {
+      text: jar.goal.toFixed(2),
+    },
+    {
       icon:
         progress < 1 ? getProgressIcon(progress, Color.Green) : { source: Icon.CheckCircle, tintColor: Color.Green },
-      text: "Progress",
+      tooltip: `${percentage}%`,
     },
   ];
 }
