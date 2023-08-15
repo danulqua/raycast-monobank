@@ -3,11 +3,12 @@ import { getProgressIcon } from "@raycast/utils";
 import { useAccounts } from "./hooks/useAccounts";
 import { transformAccount } from "./utils/transformAccount";
 import { transformJar } from "./utils/transformJar";
-import { Account, Jar, RateResponse } from "./types";
+import { Account, Jar } from "./types";
 import { isAccount } from "./utils/typeGuards";
 import { accountTypeColors } from "./data/constants";
 import { useCurrencyRates } from "./hooks/useCurrencyRates";
 import { useState } from "react";
+import { calculateTotal } from "./utils/calculateTotal";
 
 type Category = "all" | "card" | "fop" | "jar";
 
@@ -98,17 +99,6 @@ function CategoryDropdown(props: { onCategoryChange: (newValue: Category) => voi
       <List.Dropdown.Item title="Jars" value="jar" />
     </List.Dropdown>
   );
-}
-
-function calculateTotal(accounts: (Account | Jar)[], rates: RateResponse[]) {
-  return accounts.reduce((total, account) => {
-    if (account.currency.code === "UAH") return total + account.balance;
-    const rate = rates.find((rate) => rate.currencyCodeA === +account.currency.number);
-
-    if (!rate) return total;
-
-    return total + account.balance * rate.rateSell;
-  }, 0);
 }
 
 function getTitle(item: Account | Jar) {
