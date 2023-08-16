@@ -87,6 +87,7 @@ export default function Command() {
       if (isAccount(account)) {
         return satisfiesTexts(
           searchText,
+          account.title,
           account.currency.code,
           account.type,
           account.maskedPan.length ? account.maskedPan[0] : account.iban
@@ -128,8 +129,17 @@ export default function Command() {
               id={account.id}
               title={getTitle(account)}
               subtitle={getSubtitle(account)}
+              detail={
+                isShowingDetail ? (
+                  isAccount(account) ? (
+                    <AccountDetail account={account} />
+                  ) : (
+                    <JarDetail jar={account} />
+                  )
+                ) : null
+              }
               accessories={
-                isShowingDetail
+                !isShowingDetail
                   ? isAccount(account)
                     ? getAccountAccessories(account)
                     : getJarAccessories(account)

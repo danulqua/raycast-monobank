@@ -1,9 +1,10 @@
 import { LocalStorage } from "@raycast/api";
+import { useCachedState } from "@raycast/utils";
 import { useEffect, useState } from "react";
 
 export function useLocalStorage<T>(key: string, initialValue?: T) {
   const [isLoading, setIsLoading] = useState(true);
-  const [data, setData] = useState<T>(initialValue || ({} as T));
+  const [data, setData] = useCachedState(key, initialValue || ({} as T));
 
   useEffect(() => {
     setIsLoading(true);

@@ -20,7 +20,6 @@ export default function EditForm(props: { account: Account }) {
     };
 
     updateAccount(account.id, newAccount);
-    await new Promise((resolve) => setTimeout(resolve, 0));
     navigation.pop();
     showToast(Toast.Style.Success, `Account Saved`);
   }
