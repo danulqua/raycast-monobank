@@ -1,4 +1,4 @@
-import { Action, ActionPanel, Color, Icon, List, Toast, showToast } from "@raycast/api";
+import { Action, ActionPanel, Clipboard, Color, Icon, List, Toast, showHUD, showToast } from "@raycast/api";
 import { getProgressIcon } from "@raycast/utils";
 import { useAccounts } from "./hooks/useAccounts";
 import { Account, Jar } from "./types";
@@ -69,6 +69,11 @@ export default function Command() {
 
   function toggleDetails() {
     setIsShowingDetail((isShowingDetail) => !isShowingDetail);
+  }
+
+  async function onCopyTotal() {
+    await Clipboard.copy(totalAmount.toFixed(2));
+    await showHUD("Copied to Clipboard");
   }
 
   function getValidRearrangeDirections(item: Account | Jar) {
@@ -154,6 +159,7 @@ export default function Command() {
                     onPin={onPin}
                     onRearrange={onRearrange}
                     onToggleDetails={toggleDetails}
+                    onCopyTotal={onCopyTotal}
                   />
                 ) : (
                   <JarActions
@@ -163,6 +169,7 @@ export default function Command() {
                     onPin={onPin}
                     onRearrange={onRearrange}
                     onToggleDetails={toggleDetails}
+                    onCopyTotal={onCopyTotal}
                   />
                 )
               }
@@ -181,7 +188,15 @@ export default function Command() {
               subtitle={getSubtitle(card)}
               detail={<AccountDetail account={card} />}
               accessories={!isShowingDetail ? getAccountAccessories(card) : null}
-              actions={<AccountActions account={card} isPinned={false} onPin={onPin} onToggleDetails={toggleDetails} />}
+              actions={
+                <AccountActions
+                  account={card}
+                  isPinned={false}
+                  onPin={onPin}
+                  onToggleDetails={toggleDetails}
+                  onCopyTotal={onCopyTotal}
+                />
+              }
             />
           ))}
         </List.Section>
@@ -197,7 +212,15 @@ export default function Command() {
               subtitle={getSubtitle(fop)}
               detail={<AccountDetail account={fop} />}
               accessories={!isShowingDetail ? getAccountAccessories(fop) : null}
-              actions={<AccountActions account={fop} isPinned={false} onPin={onPin} onToggleDetails={toggleDetails} />}
+              actions={
+                <AccountActions
+                  account={fop}
+                  isPinned={false}
+                  onPin={onPin}
+                  onToggleDetails={toggleDetails}
+                  onCopyTotal={onCopyTotal}
+                />
+              }
             />
           ))}
         </List.Section>
@@ -213,7 +236,15 @@ export default function Command() {
               subtitle={getSubtitle(jar)}
               detail={<JarDetail jar={jar} />}
               accessories={!isShowingDetail ? getJarAccessories(jar) : null}
-              actions={<JarActions jar={jar} isPinned={false} onPin={onPin} onToggleDetails={toggleDetails} />}
+              actions={
+                <JarActions
+                  jar={jar}
+                  isPinned={false}
+                  onPin={onPin}
+                  onToggleDetails={toggleDetails}
+                  onCopyTotal={onCopyTotal}
+                />
+              }
             />
           ))}
         </List.Section>
@@ -335,8 +366,9 @@ function AccountActions(props: {
   onPin: (account: Account) => void;
   onRearrange?: (account: Account, direction: "up" | "down") => void;
   onToggleDetails: () => void;
+  onCopyTotal: () => void;
 }) {
-  const { account, isPinned, validRearrangeDirections, onPin, onRearrange, onToggleDetails } = props;
+  const { account, isPinned, validRearrangeDirections, onPin, onRearrange, onToggleDetails, onCopyTotal } = props;
 
   const sendUrl = `https://send.monobank.ua/${account.sendId}`;
 
@@ -354,21 +386,32 @@ function AccountActions(props: {
           content={account.iban}
           shortcut={{ modifiers: ["cmd", "shift"], key: "enter" }}
         />
+        <Action.CopyToClipboard
+          title="Copy Balance"
+          content={account.balance}
+          shortcut={{ modifiers: ["cmd", "shift"], key: "b" }}
+        />
+        <Action
+          title="Copy Total"
+          icon={Icon.CopyClipboard}
+          shortcut={{ modifiers: ["cmd", "shift"], key: "t" }}
+          onAction={onCopyTotal}
+        />
         <Action.Push
           title="Edit Account"
           icon={Icon.Pencil}
           shortcut={{ modifiers: ["cmd"], key: "e" }}
           target={<EditForm account={account} />}
         />
+      </ActionPanel.Section>
+
+      <ActionPanel.Section>
         <Action
           title="Toggle Details"
           icon={Icon.Sidebar}
           shortcut={{ modifiers: ["cmd", "shift"], key: "d" }}
           onAction={onToggleDetails}
         />
-      </ActionPanel.Section>
-
-      <ActionPanel.Section>
         <Action
           title={!isPinned ? "Pin" : "Unpin"}
           icon={!isPinned ? Icon.Pin : Icon.PinDisabled}
@@ -468,8 +511,9 @@ function JarActions(props: {
   onPin: (account: Jar) => void;
   onRearrange?: (account: Jar, direction: "up" | "down") => void;
   onToggleDetails: () => void;
+  onCopyTotal: () => void;
 }) {
-  const { jar, isPinned, validRearrangeDirections, onPin, onRearrange, onToggleDetails } = props;
+  const { jar, isPinned, validRearrangeDirections, onPin, onRearrange, onToggleDetails, onCopyTotal } = props;
 
   const sendUrl = `https://send.monobank.ua/${jar.sendId}`;
 
@@ -478,15 +522,33 @@ function JarActions(props: {
       <ActionPanel.Section>
         <Action.OpenInBrowser title="Open Top Up Page" url={sendUrl} />
         <Action.CopyToClipboard title="Copy Top Up Page URL" icon={Icon.Link} content={sendUrl} />
+        <Action.CopyToClipboard
+          title="Copy Balance"
+          content={jar.balance}
+          shortcut={{ modifiers: ["cmd", "shift"], key: "b" }}
+        />
+        {jar.goal ? (
+          <Action.CopyToClipboard
+            title="Copy Goal"
+            content={jar.goal}
+            shortcut={{ modifiers: ["cmd", "shift"], key: "g" }}
+          />
+        ) : undefined}
+        <Action
+          title="Copy Total"
+          icon={Icon.CopyClipboard}
+          shortcut={{ modifiers: ["cmd", "shift"], key: "t" }}
+          onAction={onCopyTotal}
+        />
+      </ActionPanel.Section>
+
+      <ActionPanel.Section>
         <Action
           title="Toggle Details"
           icon={Icon.Sidebar}
           shortcut={{ modifiers: ["cmd", "shift"], key: "d" }}
           onAction={onToggleDetails}
         />
-      </ActionPanel.Section>
-
-      <ActionPanel.Section>
         <Action
           title={!isPinned ? "Pin" : "Unpin"}
           icon={!isPinned ? Icon.Pin : Icon.PinDisabled}

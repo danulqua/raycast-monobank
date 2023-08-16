@@ -23,7 +23,7 @@ export function useCurrencyRates() {
     if (isLoadingFromLS) return;
 
     const now = Date.now();
-    if (now - data.lastUpdated <= 1000 * 60) return;
+    if (now - data.lastUpdated <= 1000 * 60 * 60 * 24) return;
 
     fetchRates().then((rates) => {
       const filteredRates = filterRates(rates);
