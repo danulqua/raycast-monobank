@@ -96,9 +96,29 @@ export function useAccounts() {
     }
   }
 
+  function updateAccount(id: string, newData: Account) {
+    const accounts = data.clientInfo.accounts.map((account) => {
+      if (account.id !== id) return account;
+
+      return {
+        ...account,
+        ...newData,
+      };
+    });
+
+    setData((prev) => ({
+      ...prev,
+      clientInfo: {
+        ...prev.clientInfo,
+        accounts,
+      },
+    }));
+  }
+
   return {
     data: data.clientInfo,
     setData,
+    updateAccount,
     isLoading: isLoading || isLoadingFromLS,
     isError,
   };

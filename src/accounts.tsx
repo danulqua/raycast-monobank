@@ -8,6 +8,7 @@ import { useCurrencyRates } from "./hooks/useCurrencyRates";
 import { useEffect, useState } from "react";
 import { calculateTotal, satisfiesTexts, filterPinnedItems, formatCurrency } from "./utils";
 import { useLocalStorage } from "./hooks/useLocalStorage";
+import EditForm from "./views/EditForm";
 
 type Category = "all" | "pinned" | "card" | "fop" | "jar";
 
@@ -342,6 +343,12 @@ function AccountActions(props: {
           title="Copy IBAN"
           content={account.iban}
           shortcut={{ modifiers: ["cmd", "shift"], key: "enter" }}
+        />
+        <Action.Push
+          title="Edit Account"
+          icon={Icon.Pencil}
+          shortcut={{ modifiers: ["cmd"], key: "e" }}
+          target={<EditForm account={account} />}
         />
         <Action
           title="Toggle Details"

@@ -1,22 +1,21 @@
 import { LocalStorage } from "@raycast/api";
 import { useEffect, useState } from "react";
 
-export function useLocalStorage<T>(key: string, initialValue: T) {
-  const [data, setData] = useState<T>(initialValue);
+export function useLocalStorage<T>(key: string, initialValue?: T) {
   const [isLoading, setIsLoading] = useState(true);
+  const [data, setData] = useState<T>(initialValue || ({} as T));
 
   useEffect(() => {
     setIsLoading(true);
     getLocalStorageValue()
       .then((json) => {
-        if (!json) {
+        if (!json && initialValue) {
           setLocalStorageValue(initialValue);
           setData(initialValue);
           return;
         }
 
-        const value: T = JSON.parse(json);
-        setData(value);
+        setData(json as T);
       })
       .finally(() => {
         setIsLoading(false);
@@ -31,8 +30,9 @@ export function useLocalStorage<T>(key: string, initialValue: T) {
     await LocalStorage.setItem(key, JSON.stringify(newValue));
   }
 
-  function getLocalStorageValue() {
-    return LocalStorage.getItem<string>(key);
+  async function getLocalStorageValue() {
+    const data = await LocalStorage.getItem<string>(key);
+    return data ? (JSON.parse(data) as T) : null;
   }
 
   return {
