@@ -1,7 +1,7 @@
 import { Clipboard, List, Toast, showHUD, showToast } from "@raycast/api";
 import { useEffect, useState } from "react";
 import { Account, Jar } from "./types";
-import { useLocalStorage, useCurrencyRates, useAccounts } from "./hooks";
+import { useLocalStorage, useCurrencyRates, useClientInfo } from "./hooks";
 
 import AccountDetail from "./components/accounts/AccountDetail";
 import AccountActions from "./components/accounts/AccountActions";
@@ -24,7 +24,7 @@ export default function Command() {
   const [searchText, setSearchText] = useState("");
   const [category, setCategory] = useState<Category>("all");
   const [isShowingDetail, setIsShowingDetail] = useState(false);
-  const { data: clientInfo, updateAccount, isLoading: isClientInfoLoading, isError: isAccountsError } = useAccounts();
+  const { data: clientInfo, updateAccount, isLoading: isClientInfoLoading, isError: isAccountsError } = useClientInfo();
   const { data: rates, isLoading: isRatesLoading, isError: isRatesError } = useCurrencyRates();
   const {
     data: pinned,
