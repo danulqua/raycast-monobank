@@ -1,6 +1,6 @@
 import { Clipboard, List, Toast, showHUD, showToast } from "@raycast/api";
 import { useEffect, useState } from "react";
-import { Account, Jar } from "./types";
+import { Account, AccountType, Jar } from "./types";
 import { useLocalStorage, useCurrencyRates, useClientInfo } from "./hooks";
 
 import AccountDetail from "./components/accounts/AccountDetail";
@@ -91,8 +91,8 @@ export default function Command() {
     };
   }
 
-  const cards = accounts.filter((account) => account.type !== "fop");
-  const fops = accounts.filter((account) => account.type === "fop");
+  const cards = accounts.filter((account) => account.type !== AccountType.FOP);
+  const fops = accounts.filter((account) => account.type === AccountType.FOP);
 
   const pinnedAccounts = pinned
     .map((pinnedAccountId) => [...accounts, ...jars].find((account) => account.id === pinnedAccountId)!)
