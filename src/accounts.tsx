@@ -16,7 +16,7 @@ export default function Command() {
   const [searchText, setSearchText] = useState("");
   const [category, setCategory] = useState<Category>("all");
   const [isShowingDetail, setIsShowingDetail] = useState(false);
-  const { data: clientInfo, isLoading: isClientInfoLoading, isError: isAccountsError } = useAccounts();
+  const { data: clientInfo, updateAccount, isLoading: isClientInfoLoading, isError: isAccountsError } = useAccounts();
   const { data: rates, isLoading: isRatesLoading, isError: isRatesError } = useCurrencyRates();
   const {
     data: pinned,
@@ -160,6 +160,7 @@ export default function Command() {
                     onRearrange={onRearrange}
                     onToggleDetails={toggleDetails}
                     onCopyTotal={onCopyTotal}
+                    onEdit={updateAccount}
                   />
                 ) : (
                   <JarActions
@@ -195,6 +196,7 @@ export default function Command() {
                   onPin={onPin}
                   onToggleDetails={toggleDetails}
                   onCopyTotal={onCopyTotal}
+                  onEdit={updateAccount}
                 />
               }
             />
@@ -219,6 +221,7 @@ export default function Command() {
                   onPin={onPin}
                   onToggleDetails={toggleDetails}
                   onCopyTotal={onCopyTotal}
+                  onEdit={updateAccount}
                 />
               }
             />
@@ -274,10 +277,10 @@ function CategoryDropdown(props: { onCategoryChange: (newValue: Category) => voi
 function getTitle(item: Account | Jar) {
   if (isAccount(item)) {
     const panOrIban = item.maskedPan.length ? item.maskedPan[0] : item.iban;
-    return `${item.currency.flag} ${item.title ? item.title : panOrIban}`;
+    return `${item.currency.flag} ${item.title || panOrIban}`;
   }
 
-  return item.currency.flag + " " + item.title;
+  return `${item.currency.flag} ${item.title}`;
 }
 
 function getSubtitle(item: Account | Jar) {
@@ -306,12 +309,12 @@ function AccountDetail(props: { account: Account }) {
           <List.Item.Detail.Metadata.Label title="ID" text={account.id} />
           <List.Item.Detail.Metadata.Separator />
 
-          {account.maskedPan.length ? (
+          {account.maskedPan.length > 0 && (
             <>
               <List.Item.Detail.Metadata.Label title="Masked Pan" text={account.maskedPan[0]} />
               <List.Item.Detail.Metadata.Separator />
             </>
-          ) : undefined}
+          )}
 
           <List.Item.Detail.Metadata.Label title="IBAN" text={account.iban} />
           <List.Item.Detail.Metadata.Separator />
@@ -323,7 +326,7 @@ function AccountDetail(props: { account: Account }) {
 
           <List.Item.Detail.Metadata.Label
             title="Currency"
-            text={account.currency.flag + " " + account.currency.code + ", " + account.currency.name}
+            text={`${account.currency.flag} ${account.currency.code}, ${account.currency.name}`}
           />
           <List.Item.Detail.Metadata.Separator />
 
@@ -339,20 +342,20 @@ function AccountDetail(props: { account: Account }) {
           />
           <List.Item.Detail.Metadata.Separator />
 
-          {account.cashbackType ? (
+          {!!account.cashbackType && (
             <>
               <List.Item.Detail.Metadata.Label title="Cashback Type" text={account.cashbackType} />
               <List.Item.Detail.Metadata.Separator />
             </>
-          ) : undefined}
+          )}
 
-          {hasTopUpPage ? (
+          {hasTopUpPage && (
             <List.Item.Detail.Metadata.Link
               title="Top Up Page URL"
               text={`https://send.monobank.ua/${account.sendId}`}
               target={`https://send.monobank.ua/${account.sendId}`}
             />
-          ) : undefined}
+          )}
         </List.Item.Detail.Metadata>
       }
     />
@@ -367,8 +370,10 @@ function AccountActions(props: {
   onRearrange?: (account: Account, direction: "up" | "down") => void;
   onToggleDetails: () => void;
   onCopyTotal: () => void;
+  onEdit: (id: string, account: Account) => void;
 }) {
-  const { account, isPinned, validRearrangeDirections, onPin, onRearrange, onToggleDetails, onCopyTotal } = props;
+  const { account, isPinned, validRearrangeDirections, onPin, onRearrange, onToggleDetails, onCopyTotal, onEdit } =
+    props;
 
   const sendUrl = `https://send.monobank.ua/${account.sendId}`;
 
@@ -401,7 +406,7 @@ function AccountActions(props: {
           title="Edit Account"
           icon={Icon.Pencil}
           shortcut={{ modifiers: ["cmd"], key: "e" }}
-          target={<EditForm account={account} />}
+          target={<EditForm account={account} onEdit={onEdit} />}
         />
       </ActionPanel.Section>
 
@@ -450,20 +455,15 @@ function getJarAccessories(jar: Jar): List.Item.Accessory[] {
 
   if (!jar.goal) return [{ text: "No goal" }];
 
-  return [
-    {
-      text: formatCurrency(jar.goal, jar.currency.code),
-    },
-    {
-      icon:
-        progress < 1 ? getProgressIcon(progress, Color.Green) : { source: Icon.CheckCircle, tintColor: Color.Green },
-      tooltip: `${percentage}%`,
-    },
-  ];
+  const progressIcon =
+    progress < 1 ? getProgressIcon(progress, Color.Green) : { source: Icon.CheckCircle, tintColor: Color.Green };
+
+  return [{ text: formatCurrency(jar.goal, jar.currency.code) }, { icon: progressIcon, tooltip: `${percentage}%` }];
 }
 
 function JarDetail(props: { jar: Jar }) {
   const { jar } = props;
+  const sendUrl = `https://send.monobank.ua/${jar.sendId}`;
 
   return (
     <List.Item.Detail
@@ -480,7 +480,7 @@ function JarDetail(props: { jar: Jar }) {
 
           <List.Item.Detail.Metadata.Label
             title="Currency"
-            text={jar.currency.flag + " " + jar.currency.code + ", " + jar.currency.name}
+            text={`${jar.currency.flag} ${jar.currency.code}, ${jar.currency.name}`}
           />
           <List.Item.Detail.Metadata.Separator />
 
@@ -493,11 +493,7 @@ function JarDetail(props: { jar: Jar }) {
           />
           <List.Item.Detail.Metadata.Separator />
 
-          <List.Item.Detail.Metadata.Link
-            title="Top Up Page URL"
-            text={`https://send.monobank.ua/${jar.sendId}`}
-            target={`https://send.monobank.ua/${jar.sendId}`}
-          />
+          <List.Item.Detail.Metadata.Link title="Top Up Page URL" text={sendUrl} target={sendUrl} />
         </List.Item.Detail.Metadata>
       }
     />
@@ -527,13 +523,13 @@ function JarActions(props: {
           content={jar.balance}
           shortcut={{ modifiers: ["cmd", "shift"], key: "b" }}
         />
-        {jar.goal ? (
+        {!!jar.goal && (
           <Action.CopyToClipboard
             title="Copy Goal"
             content={jar.goal}
             shortcut={{ modifiers: ["cmd", "shift"], key: "g" }}
           />
-        ) : undefined}
+        )}
         <Action
           title="Copy Total"
           icon={Icon.CopyClipboard}

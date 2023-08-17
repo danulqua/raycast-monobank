@@ -70,30 +70,26 @@ export default function Command() {
 
   return (
     <List isLoading={isLoading} searchBarAccessory={<CategoryDropdown onCategoryChange={onCategoryChange} />}>
-      {pinnedRates.length ? (
-        <List.Section title="Pinned">
-          {pinnedRates.map((item) => (
-            <List.Item
-              key={item.id}
-              id={item.id}
-              title={getTitle(item.currencyA, item.currencyB)}
-              subtitle={getSubtitle(item)}
-              accessories={getAccessories(item)}
-              actions={
-                <RateActions
-                  item={item}
-                  isPinned={true}
-                  onRearrange={onRearrange}
-                  validRearrangeDirections={getValidRearrangeDirections(item)}
-                  onPin={onPin}
-                />
-              }
-            />
-          ))}
-        </List.Section>
-      ) : (
-        <List.EmptyView />
-      )}
+      <List.Section title="Pinned">
+        {pinnedRates.map((item) => (
+          <List.Item
+            key={item.id}
+            id={item.id}
+            title={getTitle(item.currencyA, item.currencyB)}
+            subtitle={getSubtitle(item)}
+            accessories={getAccessories(item)}
+            actions={
+              <RateActions
+                item={item}
+                isPinned={true}
+                onRearrange={onRearrange}
+                validRearrangeDirections={getValidRearrangeDirections(item)}
+                onPin={onPin}
+              />
+            }
+          />
+        ))}
+      </List.Section>
 
       <List.Section title="All">
         {filteredRates.map((item) => (
@@ -127,9 +123,9 @@ function CategoryDropdown(props: { onCategoryChange: (newValue: string) => void 
 function RateActions(props: {
   item: CurrencyRate;
   isPinned: boolean;
+  validRearrangeDirections?: { up: boolean; down: boolean };
   onPin: (rate: CurrencyRate) => void;
   onRearrange?: (rate: CurrencyRate, direction: "up" | "down") => void;
-  validRearrangeDirections?: { up: boolean; down: boolean };
 }) {
   const { item, isPinned, onPin, onRearrange, validRearrangeDirections } = props;
 
