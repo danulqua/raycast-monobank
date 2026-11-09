@@ -14,6 +14,8 @@ export const shortcuts = {
   edit: Keyboard.Shortcut.Common.Edit,
   copyIban: Keyboard.Shortcut.Common.Copy,
   refresh: Keyboard.Shortcut.Common.Refresh,
+  convert: Keyboard.Shortcut.Common.Open,
+  copyRate: Keyboard.Shortcut.Common.Copy,
   // No common equivalents for these.
   copyBalance: cmdShift("b"),
   copyTotal: cmdShift("t"),

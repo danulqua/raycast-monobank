@@ -11,6 +11,16 @@ The access token is required only for the "Show Accounts" and "Show Statement" c
 3. Click "Activate"
 4. Copy generated access token and paste it into extension preferences
 
+## Show Currency Rates
+
+Browse monobank's currency rates. Enter copies the rate.
+
+Use "Convert Currency" (`⌘ O`) on a rate and type an amount to see it converted both ways. For a pair like USD – UAH:
+
+- UAH → USD uses the sell rate (the bank sells you dollars): `amount / sell`.
+- USD → UAH uses the buy rate (the bank buys your dollars): `amount × buy`.
+- Pairs with only a cross rate use it in both directions.
+
 ## Show Statement
 
 Browse the transactions of a card, PE account or jar. Pick the account in the search bar, or use "View Statement" (`⌘ ⇧ S`) on an account in "Show Accounts".
