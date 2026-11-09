@@ -1,7 +1,7 @@
 import { isSupportedRate, toCurrencyRate } from "../api/mappers";
 import { getCurrencyRates } from "../api/monobank";
 import { CurrencyRateResponse } from "../api/types";
-import { AI_RATES_TTL, STORAGE_KEYS } from "../data/constants";
+import { FRESH_RATES_TTL, STORAGE_KEYS } from "../data/constants";
 import { CurrencyRate } from "../types";
 import { Cached, readJson, writeJson } from "./storage";
 
@@ -16,12 +16,12 @@ export interface LoadedRates {
   updatedAt: number;
 }
 
-/** monobank's currency rates, refetched when the cache is older than 5 minutes. Falls back to the cache on failure. */
-export async function loadRates(): Promise<LoadedRates> {
+/** monobank's currency rates, refetched when the cache is older than `ttl` (5 minutes by default). Falls back to the cache on failure. */
+export async function loadRates(ttl = FRESH_RATES_TTL): Promise<LoadedRates> {
   const cache = await readJson<RatesCache>(STORAGE_KEYS.rates);
   const hasCache = !!cache?.rates?.length;
 
-  if (hasCache && Date.now() - cache.lastUpdated <= AI_RATES_TTL) {
+  if (hasCache && Date.now() - cache.lastUpdated <= ttl) {
     return { rates: cache.rates.map(toCurrencyRate), stale: false, updatedAt: cache.lastUpdated };
   }
 

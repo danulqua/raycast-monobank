@@ -1,6 +1,9 @@
 import { Action, ActionPanel, Icon } from "@raycast/api";
+import { STORAGE_KEYS } from "../../data/constants";
 import { shortcuts } from "../../data/shortcuts";
+import { isMenuBarSupported, showInMenuBar } from "../../services/menuBar";
 import { CurrencyRate } from "../../types";
+import { getRateTitle } from "../../utils";
 import PinActionsSection, { PinProps } from "../PinActionsSection";
 import ConvertCurrency from "./ConvertCurrency";
 
@@ -24,6 +27,21 @@ export default function RateActions(props: { rate: CurrencyRate; pin: PinProps }
           shortcut={shortcuts.convert}
           target={<ConvertCurrency rate={rate} />}
         />
+        {isMenuBarSupported && (
+          <Action
+            title="Show in Menu Bar"
+            icon={Icon.AppWindowSidebarRight}
+            shortcut={shortcuts.showInMenuBar}
+            onAction={() =>
+              showInMenuBar({
+                key: STORAGE_KEYS.menuBarRate,
+                id: rate.id,
+                command: "rates-menu-bar",
+                title: getRateTitle(rate),
+              })
+            }
+          />
+        )}
       </ActionPanel.Section>
 
       <PinActionsSection {...pin} />

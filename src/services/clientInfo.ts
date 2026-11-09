@@ -45,15 +45,11 @@ export function toUserFacingError(error: unknown) {
  * The user's accounts and jars, from the cache the commands share when it's fresh, else from monobank
  * (which allows one request per 60 seconds). Custom account names are kept. When the request fails for
  * a reason other than the token, the cache for the same token is returned with `stale: true`.
+ * Token problems throw `MissingTokenError` / `InvalidTokenError` (see `getTokenError`).
  */
-export async function loadClientInfo(): Promise<LoadedClientInfo> {
+export async function fetchClientInfo(): Promise<LoadedClientInfo> {
   const { token } = getPreferenceValues<Preferences>();
-
-  try {
-    requireToken(token);
-  } catch (error) {
-    throw toUserFacingError(error);
-  }
+  requireToken(token);
 
   const scope = getTokenFingerprint(token);
   const [cache, pinnedIds = []] = await Promise.all([
@@ -78,10 +74,19 @@ export async function loadClientInfo(): Promise<LoadedClientInfo> {
     await writeJson(STORAGE_KEYS.clientInfo, { clientInfo, lastUpdated, scope } satisfies ClientInfoCache);
     return result(clientInfo, lastUpdated, false);
   } catch (error) {
-    if (getTokenError(error) || !sameScopeCache) throw toUserFacingError(error);
+    if (getTokenError(error) || !sameScopeCache) throw error;
 
     console.error(error);
     return result(sameScopeCache.clientInfo, sameScopeCache.lastUpdated, true);
+  }
+}
+
+/** Like `fetchClientInfo`, but token problems become errors the AI can explain. */
+export async function loadClientInfo(): Promise<LoadedClientInfo> {
+  try {
+    return await fetchClientInfo();
+  } catch (error) {
+    throw toUserFacingError(error);
   }
 }
 

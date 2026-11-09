@@ -1,4 +1,5 @@
 import { List } from "@raycast/api";
+import { USD_UAH_RATE_ID } from "../data/constants";
 import { Currency, CurrencyRate } from "../types";
 
 export function getRateTitle(rate: CurrencyRate) {
@@ -7,6 +8,29 @@ export function getRateTitle(rate: CurrencyRate) {
 
 export function getRateSubtitle(rate: CurrencyRate) {
   return rate.rateCross ? `${rate.rateCross}` : `${rate.rateBuy ?? "–"} / ${rate.rateSell ?? "–"}`;
+}
+
+/** What "Currency Rate Menu Bar" shows next to the flag (its "Menu Bar Title" preference). */
+export type RateMenuBarTitle = "sell" | "buy" | "buySell" | "none";
+
+/** The rate in the menu bar title: the chosen one, else the first pinned one, else USD – UAH, else the first rate. */
+export function getMenuBarRate(rates: CurrencyRate[], selectedId: string, pinnedIds: string[]) {
+  const find = (id: string) => rates.find((rate) => rate.id === id);
+  return (
+    (selectedId ? find(selectedId) : undefined) ??
+    pinnedIds.map(find).find(Boolean) ??
+    find(USD_UAH_RATE_ID) ??
+    rates[0]
+  );
+}
+
+/** The menu bar title for `rate`, or undefined to show only the flag. Pairs with only a cross rate show it. */
+export function getRateMenuBarTitle(rate: CurrencyRate, mode: RateMenuBarTitle) {
+  if (mode === "none") return undefined;
+  if (rate.rateCross !== undefined) return `${rate.rateCross}`;
+  if (mode === "buy") return `${rate.rateBuy ?? "–"}`;
+  if (mode === "buySell") return getRateSubtitle(rate);
+  return `${rate.rateSell ?? "–"}`;
 }
 
 export function getRateAccessories(rate: CurrencyRate): List.Item.Accessory[] {

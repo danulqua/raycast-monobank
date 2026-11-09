@@ -7,6 +7,13 @@ function cmdShift(key: Keyboard.KeyEquivalent): Keyboard.Shortcut {
   };
 }
 
+function cmd(key: Keyboard.KeyEquivalent): Keyboard.Shortcut {
+  return {
+    macOS: { modifiers: ["cmd"], key },
+    Windows: { modifiers: ["ctrl"], key },
+  };
+}
+
 export const shortcuts = {
   pin: Keyboard.Shortcut.Common.Pin,
   moveUp: Keyboard.Shortcut.Common.MoveUp,
@@ -16,6 +23,9 @@ export const shortcuts = {
   refresh: Keyboard.Shortcut.Common.Refresh,
   convert: Keyboard.Shortcut.Common.Open,
   copyRate: Keyboard.Shortcut.Common.Copy,
+  open: Keyboard.Shortcut.Common.Open,
+  // The usual shortcut for preferences, as in other menu bar commands.
+  configureCommand: cmd(","),
   // No common equivalents for these.
   copyBalance: cmdShift("b"),
   copyTotal: cmdShift("t"),
@@ -25,4 +35,5 @@ export const shortcuts = {
   changePeriod: cmdShift("p"),
   viewStatement: cmdShift("s"),
   exportCsv: cmdShift("e"),
+  showInMenuBar: cmdShift("m"),
 } satisfies Record<string, Keyboard.Shortcut>;

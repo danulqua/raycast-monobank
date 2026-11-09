@@ -1,4 +1,4 @@
-import { Color, Icon, List } from "@raycast/api";
+import { Color, Icon, Image, List } from "@raycast/api";
 import { getProgressIcon } from "@raycast/utils";
 import { Account, AccountOrJar, AccountType, CurrencyRate, Jar } from "../types";
 import { SEND_BASE_URL, accountTypeColors } from "../data/constants";
@@ -69,13 +69,74 @@ export function getAccountAccessories(account: Account): List.Item.Accessory[] {
     : [{ tag: { value: account.type, color } }];
 }
 
+/** How much of the goal is collected, from 0 (can be over 1), or undefined for jars without a goal. */
+export function getJarProgress(jar: Jar) {
+  return jar.goal ? jar.balance / jar.goal : undefined;
+}
+
+// Hex colors, not `Color.Green`: the progress ring is an SVG, and the menu bar draws a Raycast color name in it as black.
+const progressColors = {
+  light: { color: "#34C759", background: "black", backgroundOpacity: 0.15 },
+  dark: { color: "#30D158", background: "white", backgroundOpacity: 0.25 },
+};
+
+/** A progress ring for jars with a goal, a check mark once it's reached, and coins for jars without a goal. */
+export function getJarIcon(jar: Jar): Image.ImageLike {
+  const progress = getJarProgress(jar);
+  if (progress === undefined) return Icon.Coins;
+  if (progress >= 1) return { source: Icon.CheckCircle, tintColor: Color.Green };
+
+  const ring = ({ color, ...options }: (typeof progressColors)["light"]) => getProgressIcon(progress, color, options);
+  return { source: { light: ring(progressColors.light), dark: ring(progressColors.dark) } };
+}
+
+/** The progress as a whole percentage, rounded down so it shows 100% only once the goal is reached. */
+export function formatJarPercentage(jar: Jar) {
+  const progress = getJarProgress(jar);
+  return progress === undefined ? undefined : `${Math.floor(progress * 100)}%`;
+}
+
 export function getJarAccessories(jar: Jar): List.Item.Accessory[] {
-  if (!jar.goal) return [{ text: "No goal" }];
+  const progress = getJarProgress(jar);
+  if (progress === undefined) return [{ text: "No goal" }];
 
-  const progress = jar.balance / jar.goal;
   const percentage = (progress * 100).toFixed(2);
-  const progressIcon =
-    progress < 1 ? getProgressIcon(progress, Color.Green) : { source: Icon.CheckCircle, tintColor: Color.Green };
+  return [{ text: formatCurrency(jar.goal, jar.currency.code) }, { icon: getJarIcon(jar), tooltip: `${percentage}%` }];
+}
 
-  return [{ text: formatCurrency(jar.goal, jar.currency.code) }, { icon: progressIcon, tooltip: `${percentage}%` }];
+/** What "Jar Progress Menu Bar" shows next to the icon (its "Menu Bar Title" preference). */
+export type JarMenuBarTitle = "percentage" | "balance" | "balanceAndGoal" | "none";
+
+/**
+ * The jar in the menu bar title: the chosen one, else the first pinned jar, else the first jar with a goal
+ * that isn't reached yet, else the first jar with a goal, else the first jar.
+ */
+export function getMenuBarJar(jars: Jar[], selectedId: string, pinnedIds: string[]) {
+  const find = (id: string) => jars.find((jar) => jar.id === id);
+  return (
+    (selectedId ? find(selectedId) : undefined) ??
+    pinnedIds.map(find).find(Boolean) ??
+    jars.find((jar) => jar.goal && jar.balance < jar.goal) ??
+    jars.find((jar) => jar.goal) ??
+    jars[0]
+  );
+}
+
+/** An amount for the menu bar: without decimals when it's whole, e.g. "50 000 ₴", else with them, e.g. "0.01 ₴". */
+function formatShortAmount(amount: number, jar: Jar) {
+  return formatCurrency(amount, jar.currency.code, Number.isInteger(amount) ? 0 : 2);
+}
+
+/** A jar's balance and goal, e.g. "12 300 ₴ / 50 000 ₴", or just the balance without a goal. */
+export function formatJarBalanceAndGoal(jar: Jar) {
+  const balance = formatShortAmount(jar.balance, jar);
+  return jar.goal ? `${balance} / ${formatShortAmount(jar.goal, jar)}` : balance;
+}
+
+/** The menu bar title for `jar`, or undefined to show only the icon. Jars without a goal show their balance. */
+export function getJarMenuBarTitle(jar: Jar, mode: JarMenuBarTitle) {
+  if (mode === "none") return undefined;
+  if (!jar.goal || mode === "balance") return formatShortAmount(jar.balance, jar);
+  if (mode === "balanceAndGoal") return formatJarBalanceAndGoal(jar);
+  return formatJarPercentage(jar);
 }

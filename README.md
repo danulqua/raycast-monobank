@@ -1,10 +1,10 @@
 # monobank
 
-View currency rates, all your accounts and their transactions in monobank, and ask AI about them.
+View currency rates, all your accounts and their transactions in monobank, keep a rate or a jar in the menu bar, and ask AI about them.
 
 ## Setup
 
-The access token is required for the "Show Accounts" and "Show Statement" commands and for AI questions about your accounts and transactions. "Show Currency Rates" and currency questions work without it. To create an access token:
+The access token is required for the "Show Accounts", "Show Statement" and "Jar Progress Menu Bar" commands and for AI questions about your accounts and transactions. "Show Currency Rates" and currency questions work without it. To create an access token:
 
 1. Visit https://api.monobank.ua/
 2. Authenticate with your account
@@ -20,6 +20,26 @@ Use "Convert Currency" (`⌘ O`) on a rate and type an amount to see it converte
 - UAH → USD uses the sell rate (the bank sells you dollars): `amount / sell`.
 - USD → UAH uses the buy rate (the bank buys your dollars): `amount × buy`.
 - Pairs with only a cross rate use it in both directions.
+
+## Currency Rate Menu Bar
+
+Keeps one currency rate in the macOS menu bar, next to its flag. Click it to copy the rate, or to see your pinned rates and all other rates.
+
+- Choose the rate in the title by clicking another rate in the menu, or with "Show in Menu Bar" (`⌘ ⇧ M`) on a rate in "Show Currency Rates". Until you choose one, it shows your first pinned rate, or USD – UAH.
+- The "Menu Bar Title" preference sets what's shown: the sell rate (default), the buy rate, both, or only the flag. Pairs with only a cross rate always show it.
+
+## Jar Progress Menu Bar
+
+Keeps one jar in the macOS menu bar with a progress ring and how much of its goal is collected. Click it to copy the balance, goal or amount left, open its top-up page, or see your other jars:
+
+- **Gatherings** are jars with a goal, with their progress. monobank doesn't tell fundraisers and personal jars apart, so every jar with a goal is listed here.
+- **Jars** are jars without a goal, with their balance.
+
+Choose the jar in the title by clicking another jar in the menu, or with "Show in Menu Bar" (`⌘ ⇧ M`) on a jar in "Show Accounts". Hold `⌥` in the menu to open a jar's top-up page instead. Until you choose one, it shows your first pinned jar, else the first jar with a goal that isn't reached yet.
+
+The "Menu Bar Title" preference sets what's shown next to the icon: the percentage (default), the balance, the balance and goal, or nothing. Jars without a goal show their balance.
+
+Both menu bar commands are macOS only and refresh every 10 minutes. When monobank can't be reached, they keep showing the last loaded data and say when it was loaded.
 
 ## Show Statement
 

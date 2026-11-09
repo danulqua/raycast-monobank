@@ -10,13 +10,15 @@ export const STORAGE_KEYS = {
   statementRequestedAt: "statementRequestedAt",
   statementPeriod: "statementPeriod",
   statementAccount: "statementAccount",
+  menuBarRate: "menuBarRate",
+  menuBarJar: "menuBarJar",
 } as const;
 
 // Monobank allows one client-info request per 60 seconds.
 export const CLIENT_INFO_TTL = 1000 * 60;
 export const RATES_TTL = 1000 * 60 * 60 * 24;
-/** AI tools refetch rates sooner than the commands, so conversions use current rates. */
-export const AI_RATES_TTL = 1000 * 60 * 5;
+/** AI tools and the menu bar refetch rates sooner than "Show Currency Rates", so they show current rates. */
+export const FRESH_RATES_TTL = 1000 * 60 * 5;
 
 // Statement limits from the monobank API docs.
 /** The longest period one statement request can cover: 31 days and 1 hour, in seconds. */
@@ -52,3 +54,6 @@ export const accountTypeColors: Record<AccountType, Color | string> = {
   yellow: Color.Yellow,
   eAid: Color.Blue,
 };
+
+/** The id of the USD – UAH rate (ISO 4217 numeric codes), the default rate in the menu bar. */
+export const USD_UAH_RATE_ID = "840-980";
