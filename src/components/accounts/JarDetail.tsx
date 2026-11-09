@@ -1,10 +1,10 @@
 import { List } from "@raycast/api";
 import { Jar } from "../../types";
-import { formatCurrency, getFlagImage } from "../../utils";
+import { formatCurrency, getFlagImage, getSendUrl } from "../../utils";
 
 export default function JarDetail(props: { jar: Jar }) {
   const { jar } = props;
-  const sendUrl = `https://send.monobank.ua/${jar.sendId}`;
+  const sendUrl = getSendUrl(jar.sendId);
 
   return (
     <List.Item.Detail

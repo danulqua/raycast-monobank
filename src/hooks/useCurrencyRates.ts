@@ -1,59 +1,26 @@
-import { useEffect, useState } from "react";
-import api from "../api";
-import { RateResponse } from "../types";
-import { useLocalStorage } from "./useLocalStorage";
+import { useMemo } from "react";
+import { isSupportedRate, toCurrencyRate } from "../api/mappers";
+import { getCurrencyRates } from "../api/monobank";
+import { CurrencyRateResponse } from "../api/types";
+import { RATES_TTL, STORAGE_KEYS } from "../data/constants";
+import { usePersistedResource } from "./usePersistedResource";
 
-import { filterRates } from "../utils";
-
-interface LocalStorageRatesData {
-  rates: RateResponse[];
-  lastUpdated: number;
-}
+// The cache keeps the API format, so caches from earlier versions stay valid.
+const initialValue: { rates: CurrencyRateResponse[] } = { rates: [] };
 
 export function useCurrencyRates() {
-  const [isLoading, setIsLoading] = useState(false);
-  const [isError, setIsError] = useState(false);
+  const { data, isLoading, isError } = usePersistedResource({
+    key: STORAGE_KEYS.rates,
+    initialValue,
+    ttl: RATES_TTL,
+    fetch: async () => ({ rates: (await getCurrencyRates()).filter(isSupportedRate) }),
+  });
 
-  const {
-    data,
-    setData,
-    isLoading: isLoadingFromLS,
-  } = useLocalStorage<LocalStorageRatesData>("rates", { rates: [], lastUpdated: 0 });
-
-  useEffect(() => {
-    if (isLoadingFromLS) return;
-
-    const now = Date.now();
-    if (now - data.lastUpdated <= 1000 * 60 * 60 * 24) return;
-
-    fetchRates().then((rates) => {
-      const filteredRates = filterRates(rates);
-      setData({
-        rates: filteredRates,
-        lastUpdated: now,
-      });
-    });
-  }, [isLoadingFromLS]);
-
-  async function fetchRates() {
-    setIsLoading(true);
-    setIsError(false);
-
-    try {
-      const response = await api.get<RateResponse[]>("/bank/currency");
-      return response.data;
-    } catch (error) {
-      console.error(error);
-      setIsError(true);
-      return data.rates.length ? data.rates : [];
-    } finally {
-      setIsLoading(false);
-    }
-  }
+  const rates = useMemo(() => data.rates.map(toCurrencyRate), [data.rates]);
 
   return {
-    data: data.rates,
-    isLoading: isLoading || isLoadingFromLS,
+    data: rates,
+    isLoading,
     isError,
   };
 }

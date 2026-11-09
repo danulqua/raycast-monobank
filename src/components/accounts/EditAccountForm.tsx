@@ -1,23 +1,19 @@
 import { Action, ActionPanel, Form, Toast, showToast, useNavigation } from "@raycast/api";
-import { Account } from "../types";
+import { Account } from "../../types";
 
 interface FormValues {
   title: string;
 }
 
-export default function EditForm(props: { account: Account; onEdit: (id: string, newData: Account) => void }) {
+export default function EditAccountForm(props: {
+  account: Account;
+  onEdit: (id: string, patch: Pick<Account, "title">) => void;
+}) {
   const { account, onEdit } = props;
   const navigation = useNavigation();
 
   async function onSubmit(values: FormValues) {
-    const newTitle = values.title.trim();
-
-    const newAccount = {
-      ...account,
-      title: newTitle,
-    };
-
-    onEdit(account.id, newAccount);
+    onEdit(account.id, { title: values.title.trim() });
     navigation.pop();
     showToast(Toast.Style.Success, `Account Saved`);
   }

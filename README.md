@@ -4,7 +4,7 @@ View currency rates and all your accounts in monobank.
 
 ## Setup
 
-Some commands may require you to have access token (e.g. "Show Accounts"). To create access token:
+The access token is required only for the "Show Accounts" command. "Show Currency Rates" works without it. To create an access token:
 
 1. Visit https://api.monobank.ua/
 2. Authenticate with your account
