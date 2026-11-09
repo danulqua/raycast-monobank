@@ -3,6 +3,7 @@ import { shortcuts } from "../../data/shortcuts";
 import { Jar } from "../../types";
 import { getSendUrl } from "../../utils";
 import PinActionsSection, { PinProps } from "../PinActionsSection";
+import StatementView from "../statement/StatementView";
 
 export default function JarActions(props: {
   jar: Jar;
@@ -18,6 +19,12 @@ export default function JarActions(props: {
       <ActionPanel.Section>
         <Action.OpenInBrowser title="Open Top up Page" url={sendUrl} />
         <Action.CopyToClipboard title="Copy Top up Page URL" icon={Icon.Link} content={sendUrl} />
+        <Action.Push
+          title="View Statement"
+          icon={Icon.List}
+          shortcut={shortcuts.viewStatement}
+          target={<StatementView account={jar} />}
+        />
         <Action.CopyToClipboard title="Copy Balance" content={jar.balance} shortcut={shortcuts.copyBalance} />
         {!!jar.goal && <Action.CopyToClipboard title="Copy Goal" content={jar.goal} shortcut={shortcuts.copyGoal} />}
         <Action title="Copy Total" icon={Icon.CopyClipboard} shortcut={shortcuts.copyTotal} onAction={onCopyTotal} />

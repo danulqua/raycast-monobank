@@ -24,6 +24,18 @@ export function isAccount(item: AccountOrJar): item is Account {
   return (item as Account).iban !== undefined;
 }
 
+/**
+ * The item to show when nothing else was chosen: the first pinned one, else the first UAH card, else the first item.
+ * Doesn't depend on the order monobank returns accounts in, which often starts with a USD or EUR card.
+ */
+export function getDefaultItem(items: AccountOrJar[], pinnedIds: string[]) {
+  const pinned = pinnedIds.map((id) => items.find((item) => item.id === id)).find(Boolean);
+  const uahCard = items.find(
+    (item) => isAccount(item) && item.type !== AccountType.FOP && item.currency.code === "UAH",
+  );
+  return pinned ?? uahCard ?? items[0];
+}
+
 export function getPanOrIban(account: Account) {
   return account.maskedPan.length ? account.maskedPan[0] : account.iban;
 }

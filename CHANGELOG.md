@@ -1,7 +1,12 @@
 # monobank Changelog
 
-## [Refactor] - {PR_MERGE_DATE}
+## [Show Statement Command and Improvements] - {PR_MERGE_DATE}
 
+- Added the "Show Statement" command to browse the transactions of your cards, PE accounts and jars, with a "View Statement" action (`⌘ ⇧ S`) in "Show Accounts"
+- Choose a period (today, last 7 days, this or last month, last 31 days, or a custom range), see a summary with spending by category, and export to CSV
+- Transaction details include the merchant category, cashback, balance, comment, receipt number and counterparty, and mark transactions the merchant's bank hasn't settled yet as "Hold"
+- Requests wait for monobank's 60-second rate limit with a countdown, and statements are cached
+- Pinned accounts from "Show Accounts" appear at the top of the account dropdown in "Show Statement". The chosen account is remembered for 5 minutes since it was last used; after that, the first pinned account (or the first UAH card) opens, and a different account no longer loads by mistake when the command opens
 - Updated dependencies to the latest Raycast API
 - Adopted Raycast common shortcuts: Pin is now `⌘ .` (`Ctrl .` on Windows) and Copy IBAN is now `⌘ ⇧ C` (`Ctrl ⇧ C` on Windows)
 - Fixed a crash when searching accounts that have no card number

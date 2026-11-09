@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { ClientInfoResponse, CurrencyRateResponse, ErrorResponse } from "./types";
+import { ClientInfoResponse, CurrencyRateResponse, ErrorResponse, StatementItemResponse } from "./types";
 
 const API_URL = "https://api.monobank.ua";
 
@@ -19,6 +19,35 @@ export class InvalidTokenError extends Error {
   }
 }
 
+export type TokenError = "missing" | "invalid";
+
+/** Whether `error` is caused by the access token, and how. */
+export function getTokenError(error: unknown): TokenError | undefined {
+  if (error instanceof MissingTokenError) return "missing";
+  if (error instanceof InvalidTokenError) return "invalid";
+  return undefined;
+}
+
+/** Any other failed response. `description` is monobank's `errorDescription`, when there is one. */
+export class ApiError extends Error {
+  constructor(
+    readonly status: number,
+    readonly description: string | undefined,
+    path: string,
+  ) {
+    super(`Request to ${path} failed with status ${status}${description ? `: ${description}` : ""}`);
+    this.name = "ApiError";
+  }
+}
+
+/** Monobank answered 429: a personal endpoint was called again within its rate limit. */
+export class RateLimitError extends ApiError {
+  constructor(description: string | undefined, path: string) {
+    super(429, description, path);
+    this.name = "RateLimitError";
+  }
+}
+
 async function request<T>(path: string, token?: string): Promise<T> {
   const response = await fetch(API_URL + path, {
     headers: token ? { "X-Token": token } : {},
@@ -30,13 +59,15 @@ async function request<T>(path: string, token?: string): Promise<T> {
 
   if (!response.ok) {
     const description = await getErrorDescription(response);
-    throw new Error(`Request to ${path} failed with status ${response.status}${description ? `: ${description}` : ""}`);
+    throw response.status === 429
+      ? new RateLimitError(description, path)
+      : new ApiError(response.status, description, path);
   }
 
   return (await response.json()) as T;
 }
 
-/** Best effort, for the logs: the body may be missing or not JSON. */
+/** Best effort: the body may be missing or not JSON. */
 async function getErrorDescription(response: Response) {
   try {
     const body = (await response.json()) as ErrorResponse;
@@ -60,19 +91,37 @@ export function getTokenFingerprint(token: string | undefined) {
   return normalizedToken ? createHash("sha256").update(normalizedToken).digest("hex") : "";
 }
 
-export function getClientInfo(token: string | undefined) {
+/**
+ * Returns the normalized token, or throws `MissingTokenError` / `InvalidTokenError`.
+ * Lets callers detect token problems before spending a rate-limited request.
+ */
+export function requireToken(token: string | undefined) {
   const normalizedToken = normalizeToken(token);
 
   if (!normalizedToken) {
-    return Promise.reject(new MissingTokenError());
+    throw new MissingTokenError();
   }
 
   // Whitespace inside the token would make `fetch` throw on the header value, so reject it before the request.
   if (/\s/.test(normalizedToken)) {
-    return Promise.reject(new InvalidTokenError("Access token is malformed"));
+    throw new InvalidTokenError("Access token is malformed");
   }
 
-  return request<ClientInfoResponse>("/personal/client-info", normalizedToken);
+  return normalizedToken;
+}
+
+export async function getClientInfo(token: string | undefined) {
+  return request<ClientInfoResponse>("/personal/client-info", requireToken(token));
+}
+
+/**
+ * Transactions of an account or jar (`"0"` is the default account), newest first.
+ * `from` and `to` are unix seconds; without `to`, the period ends now. The period can be at most
+ * 31 days and 1 hour long, and monobank allows one call per 60 seconds.
+ */
+export async function getStatement(token: string | undefined, account: string, from: number, to?: number) {
+  const path = `/personal/statement/${encodeURIComponent(account)}/${from}${to !== undefined ? `/${to}` : ""}`;
+  return request<StatementItemResponse[]>(path, requireToken(token));
 }
 
 export function getCurrencyRates() {

@@ -1,7 +1,7 @@
 import { getPreferenceValues } from "@raycast/api";
 import { useCallback, useMemo } from "react";
 import { toClientInfo } from "../api/mappers";
-import { InvalidTokenError, MissingTokenError, getClientInfo, getTokenFingerprint } from "../api/monobank";
+import { getClientInfo, getTokenError, getTokenFingerprint } from "../api/monobank";
 import { CLIENT_INFO_TTL, STORAGE_KEYS } from "../data/constants";
 import { Account, ClientInfo } from "../types";
 import { usePersistedResource } from "./usePersistedResource";
@@ -17,7 +17,7 @@ export function useClientInfo() {
   const { token } = getPreferenceValues<Preferences>();
   const tokenFingerprint = useMemo(() => getTokenFingerprint(token), [token]);
 
-  const { data, setData, isLoading, isError, error } = usePersistedResource({
+  const { data, setData, isLoading, isLoadingFromStorage, isError, error } = usePersistedResource({
     key: STORAGE_KEYS.clientInfo,
     initialValue,
     ttl: CLIENT_INFO_TTL,
@@ -50,13 +50,9 @@ export function useClientInfo() {
     data: tokenError ? initialValue.clientInfo : data.clientInfo,
     updateAccount,
     isLoading,
+    /** Whether the cached accounts are still being read. Stays false while refetching. */
+    isLoadingFromStorage,
     isError,
     tokenError,
   };
-}
-
-function getTokenError(error: unknown): "missing" | "invalid" | undefined {
-  if (error instanceof MissingTokenError) return "missing";
-  if (error instanceof InvalidTokenError) return "invalid";
-  return undefined;
 }

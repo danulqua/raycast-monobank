@@ -3,6 +3,7 @@ import { shortcuts } from "../../data/shortcuts";
 import { Account } from "../../types";
 import { getSendUrl, hasTopUpPage } from "../../utils";
 import PinActionsSection, { PinProps } from "../PinActionsSection";
+import StatementView from "../statement/StatementView";
 import EditAccountForm from "./EditAccountForm";
 
 export default function AccountActions(props: {
@@ -24,6 +25,12 @@ export default function AccountActions(props: {
             <Action.CopyToClipboard title="Copy Top up Page URL" icon={Icon.Link} content={sendUrl} />
           </>
         )}
+        <Action.Push
+          title="View Statement"
+          icon={Icon.List}
+          shortcut={shortcuts.viewStatement}
+          target={<StatementView account={account} />}
+        />
         <Action.CopyToClipboard title="Copy IBAN" content={account.iban} shortcut={shortcuts.copyIban} />
         <Action.CopyToClipboard title="Copy Balance" content={account.balance} shortcut={shortcuts.copyBalance} />
         <Action title="Copy Total" icon={Icon.CopyClipboard} shortcut={shortcuts.copyTotal} onAction={onCopyTotal} />

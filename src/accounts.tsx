@@ -1,19 +1,10 @@
-import {
-  Action,
-  ActionPanel,
-  Clipboard,
-  Icon,
-  List,
-  Toast,
-  openExtensionPreferences,
-  showHUD,
-  showToast,
-} from "@raycast/api";
+import { Clipboard, List, Toast, showHUD, showToast } from "@raycast/api";
 import { useEffect, useState } from "react";
 import { AccountOrJar, AccountType } from "./types";
 import { useClientInfo, useCurrencyRates, usePinned } from "./hooks";
 import { STORAGE_KEYS } from "./data/constants";
 import CategoryDropdown from "./components/CategoryDropdown";
+import TokenErrorEmptyView, { showInvalidTokenToast } from "./components/TokenErrorEmptyView";
 import { PinProps } from "./components/PinActionsSection";
 import AccountListItem from "./components/accounts/AccountListItem";
 import JarListItem from "./components/accounts/JarListItem";
@@ -60,15 +51,7 @@ export default function Command() {
     if (tokenError === "missing") return;
 
     if (tokenError === "invalid") {
-      showToast({
-        style: Toast.Style.Failure,
-        title: "Invalid access token",
-        message: "Check the token in the extension preferences",
-        primaryAction: {
-          title: "Open Extension Preferences",
-          onAction: () => openExtensionPreferences(),
-        },
-      });
+      showInvalidTokenToast();
     } else if (isAccountsError || isRatesError) {
       showToast({
         style: Toast.Style.Failure,
@@ -144,22 +127,7 @@ export default function Command() {
       searchBarAccessory={<CategoryDropdown sections={categorySections} onChange={setCategory} />}
       onSearchTextChange={setSearchText}
     >
-      {tokenError && (
-        <List.EmptyView
-          icon={Icon.Key}
-          title={tokenError === "missing" ? "Access Token Required" : "Invalid Access Token"}
-          description={
-            tokenError === "missing"
-              ? "Add your monobank access token in the extension preferences to see your accounts"
-              : "Update your monobank access token in the extension preferences"
-          }
-          actions={
-            <ActionPanel>
-              <Action title="Open Extension Preferences" icon={Icon.Gear} onAction={openExtensionPreferences} />
-            </ActionPanel>
-          }
-        />
-      )}
+      {tokenError && <TokenErrorEmptyView tokenError={tokenError} purpose="see your accounts" />}
       <List.Section title={categoryLabel[Category.PINNED]}>
         {isCategoryVisible(Category.PINNED) && pinnedItems.map((item) => renderItem(item, true))}
       </List.Section>

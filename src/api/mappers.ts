@@ -1,6 +1,7 @@
-import { Account, AccountType, CashbackType, ClientInfo, CurrencyRate, Jar } from "../types";
-import { isKnownCurrency, toCurrency } from "../utils/currency";
-import { AccountResponse, ClientInfoResponse, CurrencyRateResponse, JarResponse } from "./types";
+import { Account, AccountType, CashbackType, ClientInfo, Currency, CurrencyRate, Jar, Transaction } from "../types";
+import { fromMinorUnits, isKnownCurrency, toCurrency, toCurrencyOrUnknown } from "../utils/currency";
+import { getCategory } from "../utils/mcc";
+import { AccountResponse, ClientInfoResponse, CurrencyRateResponse, JarResponse, StatementItemResponse } from "./types";
 
 // Fields are mapped one by one, so fields the API adds later never reach domain objects or the cache.
 
@@ -63,5 +64,33 @@ export function toCurrencyRate(rate: CurrencyRateResponse): CurrencyRate {
     rateBuy: rate.rateBuy,
     rateSell: rate.rateSell,
     rateCross: rate.rateCross,
+  };
+}
+
+/** `currency` is the currency of the account or jar the statement belongs to. */
+export function toTransaction(item: StatementItemResponse, currency: Currency): Transaction {
+  const operationCurrency = toCurrencyOrUnknown(item.currencyCode);
+
+  return {
+    id: item.id,
+    time: item.time,
+    description: item.description,
+    mcc: item.mcc,
+    originalMcc: item.originalMcc,
+    category: getCategory(item.mcc),
+    hold: item.hold,
+    amount: fromMinorUnits(item.amount, currency),
+    currency,
+    operationAmount: fromMinorUnits(item.operationAmount, operationCurrency),
+    operationCurrency,
+    commission: fromMinorUnits(item.commissionRate, currency),
+    cashback: fromMinorUnits(item.cashbackAmount, currency),
+    balance: fromMinorUnits(item.balance, currency),
+    comment: item.comment || undefined,
+    receiptId: item.receiptId || undefined,
+    invoiceId: item.invoiceId || undefined,
+    counterEdrpou: item.counterEdrpou || undefined,
+    counterIban: item.counterIban || undefined,
+    counterName: item.counterName || undefined,
   };
 }

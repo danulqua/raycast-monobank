@@ -92,3 +92,52 @@ export interface ManagedClientAccountResponse {
   currencyCode: number;
   iban: string;
 }
+
+/**
+ * An item of `GET /personal/statement/{account}/{from}/{to}`. Items come newest first.
+ *
+ * One request returns at most 500 items (per earlier docs; the current spec doesn't say). To get older
+ * ones, request again with `to` set to the time of the oldest item received.
+ */
+export interface StatementItemResponse {
+  id: string;
+  /** Unix time in seconds. */
+  time: number;
+  description: string;
+  /** Merchant Category Code (ISO 18245). */
+  mcc: number;
+  /** The MCC before monobank recategorized the transaction. */
+  originalMcc: number;
+  /**
+   * Whether the transaction is an authorization hold that the merchant's bank hasn't settled yet
+   * (https://en.wikipedia.org/wiki/Authorization_hold). The money is already blocked and the monobank app
+   * shows it as done, but the final amount may still change, e.g. for purchases in another currency.
+   */
+  hold: boolean;
+  /** In minor units of the account currency. Negative for expenses. */
+  amount: number;
+  /** In minor units of `currencyCode`. */
+  operationAmount: number;
+  /**
+   * ISO 4217 numeric code. The spec labels it the account currency, but it is the currency of
+   * the operation, i.e. of `operationAmount`.
+   */
+  currencyCode: number;
+  /** In minor units of the account currency. */
+  commissionRate: number;
+  /** In minor units of the account currency, or of miles for Miles cashback. */
+  cashbackAmount: number;
+  /** Balance after the transaction, in minor units of the account currency. */
+  balance: number;
+  comment?: string;
+  /** Receipt number, to look up the receipt on check.gov.ua. */
+  receiptId?: string;
+  /** Invoice number. Only for FOP accounts. */
+  invoiceId?: string;
+  /** Counterparty's EDRPOU (company code). Only for FOP accounts. */
+  counterEdrpou?: string;
+  /** Counterparty's IBAN. Only for FOP accounts. */
+  counterIban?: string;
+  /** Counterparty's name. */
+  counterName?: string;
+}

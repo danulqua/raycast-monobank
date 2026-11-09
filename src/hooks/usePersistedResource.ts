@@ -57,6 +57,8 @@ export function usePersistedResource<T extends object>(options: {
     data: isOtherScope ? initialValue : data,
     setData,
     isLoading: isFetching || isLoadingFromStorage,
+    /** Whether the cached value is still being read. Stays false while refetching. */
+    isLoadingFromStorage,
     isError: error !== undefined,
     error,
   };

@@ -2,7 +2,7 @@
   "$schema": "https://www.raycast.com/schemas/extension.json",
   "name": "monobank",
   "title": "monobank",
-  "description": "View currency rates and all your accounts in monobank.",
+  "description": "View currency rates, all your accounts and their transactions in monobank.",
   "icon": "command-icon.png",
   "author": "danulqua",
   "contributors": [
@@ -21,7 +21,9 @@
     "currency",
     "money",
     "cards",
-    "jars"
+    "jars",
+    "statement",
+    "transactions"
   ],
   "license": "MIT",
   "commands": [
@@ -38,6 +40,13 @@
       "subtitle": "monobank",
       "description": "All your accounts in monobank.",
       "mode": "view"
+    },
+    {
+      "name": "statement",
+      "title": "Show Statement",
+      "subtitle": "monobank",
+      "description": "Transactions of your monobank accounts and jars.",
+      "mode": "view"
     }
   ],
   "preferences": [
@@ -45,7 +54,7 @@
       "name": "token",
       "type": "password",
       "title": "Access Token",
-      "description": "Your monobank Access Token. Required only for the \"Show Accounts\" command.",
+      "description": "Your monobank Access Token. Required only for the \"Show Accounts\" and \"Show Statement\" commands.",
       "placeholder": "Enter Your Access Token",
       "required": false
     }
