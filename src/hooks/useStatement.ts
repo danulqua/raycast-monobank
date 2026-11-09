@@ -9,33 +9,11 @@ import {
   getTokenFingerprint,
   requireToken,
 } from "../api/monobank";
-import { StatementItemResponse } from "../api/types";
-import {
-  STATEMENT_CACHE_SIZE,
-  STATEMENT_PAGE_SIZE,
-  STATEMENT_RATE_LIMIT,
-  STATEMENT_REQUEST_DELAY,
-  STORAGE_KEYS,
-} from "../data/constants";
+import { STATEMENT_CACHE_SIZE, STATEMENT_RATE_LIMIT, STATEMENT_REQUEST_DELAY, STORAGE_KEYS } from "../data/constants";
+import { StatementCache, StatementCacheEntry, appendOlder, mergeFirstPage } from "../services/statement";
 import { AccountOrJar, Period } from "../types";
 import { resolvePeriod } from "../utils/statement";
 import { useLocalStorage } from "./useLocalStorage";
-
-// The cache keeps the API format, so changes to the domain types (e.g. new MCC data) apply to cached items too.
-interface CacheEntry {
-  /** Token fingerprint, account ID and period. */
-  key: string;
-  fetchedAt: number;
-  /** Newest first. */
-  items: StatementItemResponse[];
-  /** Whether older items in the period may not be loaded yet. */
-  hasMore: boolean;
-}
-
-interface StatementCache {
-  /** Most recently fetched first. */
-  entries: CacheEntry[];
-}
 
 const initialCache: StatementCache = { entries: [] };
 
@@ -103,7 +81,7 @@ export function useStatement(account: AccountOrJar | undefined, period: Period |
           const existing = prev.entries.find((entry) => entry.key === key);
           if (mode === "older" && !existing) return prev;
 
-          const next: CacheEntry =
+          const next: StatementCacheEntry =
             mode === "older"
               ? { ...existing!, ...appendOlder(existing!, page) }
               : { key, fetchedAt, ...mergeFirstPage(existing, page) };
@@ -236,27 +214,4 @@ async function countDown(until: number, isCurrent: () => boolean, onWait: (secon
 
 function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
-/** Combines a fresh first page with the cached statement, keeping cached older pages beyond it. */
-function mergeFirstPage(existing: CacheEntry | undefined, page: StatementItemResponse[]) {
-  const isFull = page.length >= STATEMENT_PAGE_SIZE;
-  // A page that isn't full covers the whole period.
-  if (!isFull || !existing) return { items: page, hasMore: isFull };
-
-  const boundary = page[page.length - 1].time;
-  const ids = new Set(page.map((item) => item.id));
-  const older = existing.items.filter((item) => item.time < boundary && !ids.has(item.id));
-
-  return { items: [...page, ...older], hasMore: older.length ? existing.hasMore : true };
-}
-
-/** Adds a page of older items (requested with `to` set to the oldest cached item's time). */
-function appendOlder(existing: CacheEntry, page: StatementItemResponse[]) {
-  const ids = new Set(existing.items.map((item) => item.id));
-  const added = page.filter((item) => !ids.has(item.id));
-  const items = [...existing.items, ...added].sort((a, b) => b.time - a.time);
-
-  // Stop when a page adds nothing, so a page of items that all share one time can't loop forever.
-  return { items, hasMore: page.length >= STATEMENT_PAGE_SIZE && added.length > 0 };
 }

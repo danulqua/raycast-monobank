@@ -1,7 +1,8 @@
 # monobank Changelog
 
-## [Show Statement Command and Improvements] - {PR_MERGE_DATE}
+## [AI Support, Show Statement Command and Improvements] - {PR_MERGE_DATE}
 
+- Added AI support: mention `@monobank` in AI Chat or Quick AI to ask, in English or Ukrainian, about balances, jars and their goals, top-up links, currency conversion, and spending or income by category and period. Accounts are found by their custom names, even across languages
 - Added the "Show Statement" command to browse the transactions of your cards, PE accounts and jars, with a "View Statement" action (`⌘ ⇧ S`) in "Show Accounts"
 - Choose a period (today, last 7 days, this or last month, last 31 days, or a custom range), see a summary with spending by category, and export to CSV
 - Transaction details include the merchant category, cashback, balance, comment, receipt number and counterparty, and mark transactions the merchant's bank hasn't settled yet as "Hold"

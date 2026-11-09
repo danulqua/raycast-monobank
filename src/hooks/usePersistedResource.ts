@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
+import { Cached } from "../services/storage";
 import { useLocalStorage } from "./useLocalStorage";
-
-type Cached<T> = T & { lastUpdated: number; scope?: string };
 
 /**
  * Data cached in LocalStorage and refetched once the cache is older than `ttl`.

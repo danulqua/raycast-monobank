@@ -15,6 +15,8 @@ export const STORAGE_KEYS = {
 // Monobank allows one client-info request per 60 seconds.
 export const CLIENT_INFO_TTL = 1000 * 60;
 export const RATES_TTL = 1000 * 60 * 60 * 24;
+/** AI tools refetch rates sooner than the commands, so conversions use current rates. */
+export const AI_RATES_TTL = 1000 * 60 * 5;
 
 // Statement limits from the monobank API docs.
 /** The longest period one statement request can cover: 31 days and 1 hour, in seconds. */
