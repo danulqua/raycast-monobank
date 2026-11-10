@@ -16,6 +16,7 @@ export const STORAGE_KEYS = {
   menuBarRate: `${STORAGE_PREFIX}menuBarRate`,
   menuBarJar: `${STORAGE_PREFIX}menuBarJar`,
   rateHistory: `${STORAGE_PREFIX}rateHistory`,
+  budgets: `${STORAGE_PREFIX}budgets`,
 } as const;
 
 /** The stored statement of one account or jar (see `StoredStatement`). */
@@ -66,6 +67,9 @@ export const DEFAULT_STATEMENT_RETENTION_MONTHS = 3;
  * The period is also remembered only for the account it was chosen on, so it resets when the account changes.
  */
 export const STATEMENT_SELECTION_TTL = 5 * 60_000;
+
+/** A budget shows a warning once this share of its limit is spent. */
+export const BUDGET_WARNING_RATIO = 0.8;
 
 /** Receipts are looked up on check.gov.ua by their number. It has no documented deep link. */
 export const CHECK_GOV_URL = "https://check.gov.ua/";

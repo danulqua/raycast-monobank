@@ -95,6 +95,22 @@ export async function loadClientInfo(): Promise<LoadedClientInfo> {
   }
 }
 
+/**
+ * For AI tools: the account or jar with `accountId`, else the default one. Throws an error the AI can act on when
+ * there's none.
+ */
+export function resolveToolAccount(loaded: LoadedClientInfo, accountId: string | undefined) {
+  const account = accountId ? loaded.items.find((item) => item.id === accountId) : loaded.defaultItem;
+  if (!account) {
+    throw new Error(
+      accountId
+        ? `No account or jar has the id "${accountId}". Call get-accounts to get the ids.`
+        : "The user has no accounts",
+    );
+  }
+  return account;
+}
+
 function getItems(clientInfo: ClientInfo): AccountOrJar[] {
   const cards = clientInfo.accounts.filter((account) => account.type !== AccountType.FOP);
   const fops = clientInfo.accounts.filter((account) => account.type === AccountType.FOP);

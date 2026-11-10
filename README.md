@@ -1,10 +1,10 @@
 # monobank
 
-View currency rates, all your accounts and their transactions in monobank, keep a rate or a jar in the menu bar, and ask AI about them.
+View currency rates, all your accounts and their transactions in monobank, set monthly budgets per category, keep a rate or a jar in the menu bar, and ask AI about them.
 
 ## Setup
 
-The access token is required for the "Show Accounts", "Show Statement", "Sync Statements" and "Jar Progress Menu Bar" commands and for AI questions about your accounts and transactions. "Show Currency Rates" and currency questions work without it. To create an access token:
+The access token is required for the "Show Accounts", "Show Statement", "Show Budgets", "Sync Statements" and "Jar Progress Menu Bar" commands and for AI questions about your accounts, transactions and budgets. "Show Currency Rates" and currency questions work without it. To create an access token:
 
 1. Visit https://api.monobank.ua/
 2. Authenticate with your account
@@ -61,7 +61,7 @@ Both menu bar commands are macOS only. The rate refreshes every 2 hours, and whe
 Browse the transactions of a card, FOP account or jar. Pick the account in the search bar, or use "View Statement" (`⌘ ⇧ S`) on an account in "Show Accounts".
 
 - Choose a period with "Change Period…" (`⌘ ⇧ P`): today, the last 7 days, this or last month, the last 31 days, or a custom range of up to 31 days.
-- The first item summarizes the period: income, spending, cashback and spending by category.
+- The first item summarizes the period: income, spending, cashback, your budgets (see "Budgets") and spending by category.
 - Toggle details (`⌘ ⇧ D`) to see a transaction's category, cashback, balance after it, comment, receipt number and counterparty.
 - Search by description, comment, counterparty, category (in English or Ukrainian), MCC or amount.
 - Export the statement to CSV in your Downloads folder, or copy it as CSV.
@@ -69,6 +69,15 @@ Browse the transactions of a card, FOP account or jar. Pick the account in the s
 monobank allows one statement request per 60 seconds. Statements are cached, and when a request has to wait, a countdown shows until it's sent. One request returns up to 500 transactions; use "Load Older Transactions" to get more.
 
 Statements are stored on your device for as long as the "Keep Statements For" preference says: 1 month, 3 months (the default), 6 months, 1 year or unlimited. With "Sync Statements" on, the history builds up day by day. Unlimited never deletes transactions, so it uses more disk space over time. Raising the setting doesn't bring back transactions already deleted; they load again when you open their period.
+
+## Budgets
+
+Set a monthly limit for one or more spending categories, e.g. "Cafes & Restaurants: 5 000 ₴", and see how much of it you've spent.
+
+- **What counts**: spending in the budget's categories on the UAH account you're viewing, in the calendar month. Budgets are shared by all your UAH accounts, and each account counts its own spending. Transactions on hold count, and money coming back in a budget's categories, such as refunds, is subtracted.
+- **Where**: the Summary in "Show Statement" shows your budgets for "This Month" and "Last Month" on UAH accounts, with a ring, spent of the limit, what's left and, for this month, how much you can spend per day. An orange or red mark on the Summary means a budget is near (80%) or over its limit. While searching, budgets still cover the whole month.
+- **Manage**: use "Manage Budgets…" (`⌘ ⇧ U`) in "Show Statement", or the "Show Budgets" command, which shares the account picked in "Show Statement" and switches between this and last month with `⌘ ⇧ P`. Create a budget from scratch or from a preset (Cafes & Restaurants, Groceries, Taxi, Transport, Car, Health, Clothes & Shoes, Subscriptions & Games, Entertainment, Beauty, Pets), then edit, reorder or delete it.
+- **Categories** are merchant category names, searchable in English or Ukrainian. Categories you spent on recently are listed first.
 
 ## Sync Statements
 
@@ -90,8 +99,14 @@ Mention `@monobank` in Raycast AI Chat or Quick AI and ask in English or Ukraini
 - How much money has been deposited into my account in total this month?
 - Які у мене зараз є активні збори?
 - Do I have enough money in my accounts to reach the goal in jar "A"? If not, how much more do I need?
+- Скільки ще можу витратити на кафе цього місяця?
+- Am I over budget anywhere?
+- Встанови бюджет 5000 грн на таксі
+- Скільки я отримав переказів минулого місяця?
 
 AI finds accounts and jars by their names, including the custom names you give accounts in "Show Accounts", even when you ask in another language (e.g. "основний рахунок" for an account named "Primary"). When you don't name an account, it uses the default one (the first pinned account, or the first UAH card) and tells you which.
+
+AI can also create, change and delete budgets; Raycast asks you to confirm before anything is saved.
 
 Conversions use monobank's current rates, the same way as "Convert Currency". Questions about transactions cover up to 31 days at a time and share the statement cache and the 60-second rate limit with "Show Statement", so an answer can take up to a minute.
 

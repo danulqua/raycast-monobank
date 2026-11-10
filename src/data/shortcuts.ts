@@ -19,6 +19,8 @@ export const shortcuts = {
   moveUp: Keyboard.Shortcut.Common.MoveUp,
   moveDown: Keyboard.Shortcut.Common.MoveDown,
   edit: Keyboard.Shortcut.Common.Edit,
+  create: Keyboard.Shortcut.Common.New,
+  remove: Keyboard.Shortcut.Common.Remove,
   copyIban: Keyboard.Shortcut.Common.Copy,
   refresh: Keyboard.Shortcut.Common.Refresh,
   convert: Keyboard.Shortcut.Common.Open,
@@ -37,4 +39,5 @@ export const shortcuts = {
   exportCsv: cmdShift("e"),
   showInMenuBar: cmdShift("m"),
   copyRequisites: cmdShift("r"),
+  manageBudgets: cmdShift("u"),
 } satisfies Record<string, Keyboard.Shortcut>;

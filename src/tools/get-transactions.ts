@@ -1,8 +1,9 @@
 import { toTransaction } from "../api/mappers";
-import { loadClientInfo } from "../services/clientInfo";
+import { loadClientInfo, resolveToolAccount } from "../services/clientInfo";
 import { getDisplayNames, parseDateTime, roundAmount, toLocalIso } from "../services/format";
 import { loadStatement } from "../services/statement";
 import { PeriodPreset, Transaction } from "../types";
+import { findSimilarCategories, resolveCategoryNames } from "../utils/mcc";
 import { resolvePeriod, summarize } from "../utils/statement";
 
 const DEFAULT_LIMIT = 50;
@@ -37,6 +38,13 @@ type Input = {
    */
   type?: "expense" | "income" | "all";
   /**
+   * Only transactions in these categories: names from `byCategory` of an earlier result, in English or Ukrainian,
+   * e.g. ["Money transfer"] or ["Кафе. Ресторани", "Fast Food"]. Matches every MCC with that name. Combined with
+   * `mccCodes` (a transaction matching either is included). With `type: "income"`, `categories: ["Money transfer"]`
+   * answers "how much did I receive in transfers".
+   */
+  categories?: string[];
+  /**
    * Only transactions with these Merchant Category Codes (ISO 18245), e.g. [5812, 5813, 5814] for cafes and
    * restaurants. When unsure which codes fit, leave out and use `byCategory` of the result.
    */
@@ -49,8 +57,8 @@ type Input = {
 
 /**
  * Get the transactions (statement) of a monobank account or jar for a period of up to 31 days, with totals
- * computed for the matching transactions: income, expenses, net, cashback, and spending by merchant
- * category (`byCategory`). Use the totals to answer "how much did I spend/receive" questions instead of
+ * computed for the matching transactions: income, expenses, net, cashback, and spending and income by merchant
+ * category (`byCategory`, grouped by category name, with the MCC codes of each). Use the totals to answer "how much did I spend/receive" questions instead of
  * adding up the listed transactions, which may be cut to `limit`.
  *
  * Amounts are in the account currency; expenses are negative in `transactions` and positive in the totals.
@@ -64,24 +72,18 @@ type Input = {
  * instant within a minute of the last request (e.g. with other filters).
  */
 export default async function tool(input: Input) {
-  const { items, defaultItem } = await loadClientInfo();
+  const loaded = await loadClientInfo();
+  const { items, defaultItem } = loaded;
   const names = getDisplayNames(items);
+  const account = resolveToolAccount(loaded, input.accountId);
 
-  const account = input.accountId ? items.find((item) => item.id === input.accountId) : defaultItem;
-  if (!account) {
-    throw new Error(
-      input.accountId
-        ? `No account or jar has the id "${input.accountId}". Call get-accounts to get the ids.`
-        : "The user has no accounts",
-    );
-  }
-
+  const categories = resolveCategories(input.categories);
   const now = Math.floor(Date.now() / 1000);
   const { from, to } = getPeriod(input, now);
   const statement = await loadStatement(account.id, { from, to });
   const matches = statement.items
     .map((item) => toTransaction(item, account.currency))
-    .filter((transaction) => matchesInput(transaction, input));
+    .filter((transaction) => matchesInput(transaction, input, categories));
 
   const summary = summarize(matches);
   const round = (amount: number) => roundAmount(amount, account.currency);
@@ -135,10 +137,39 @@ function getPeriod(input: Input, now: number): { from: number; to?: number } {
   return { from, to };
 }
 
-function matchesInput(transaction: Transaction, input: Input) {
+/** English names for the `categories` input. Throws for a name that matches none, with similar ones to retry with. */
+function resolveCategories(texts: string[] | undefined) {
+  const names = new Set<string>();
+
+  for (const text of texts ?? []) {
+    const resolved = resolveCategoryNames(text);
+    if (!resolved.length) {
+      const similar = findSimilarCategories(text);
+      throw new Error(
+        `No category is named "${text}".` +
+          (similar.length
+            ? ` Similar categories: ${similar.join(", ")}.`
+            : " Call without `categories` and use the names in `byCategory`."),
+      );
+    }
+    resolved.forEach((name) => names.add(name));
+  }
+
+  return names;
+}
+
+function matchesInput(transaction: Transaction, input: Input, categories: Set<string>) {
   if (input.type === "expense" && transaction.amount >= 0) return false;
   if (input.type === "income" && transaction.amount <= 0) return false;
-  if (input.mccCodes?.length && !input.mccCodes.includes(transaction.mcc)) return false;
+
+  const codes = input.mccCodes ?? [];
+  if (
+    (codes.length || categories.size) &&
+    !codes.includes(transaction.mcc) &&
+    !categories.has(transaction.category.name)
+  ) {
+    return false;
+  }
 
   const search = input.search?.trim().toLowerCase();
   if (search) {
@@ -149,32 +180,35 @@ function matchesInput(transaction: Transaction, input: Input) {
   return true;
 }
 
-/** Totals per MCC, largest spending first. */
+/** Totals per category name, largest spending first. A name can cover several MCCs, e.g. every hotel chain. */
 function getCategoryTotals(transactions: Transaction[]) {
   const categories = new Map<
-    number,
-    { mcc: number; name: string; nameUk: string; group: string; expenses: number; income: number; count: number }
+    string,
+    { name: string; nameUk: string; group: string; mccCodes: number[]; expenses: number; income: number; count: number }
   >();
 
   for (const transaction of transactions) {
     const { mcc, category } = transaction;
-    const entry = categories.get(mcc) ?? {
-      mcc,
+    const entry = categories.get(category.name) ?? {
       name: category.name,
       nameUk: category.nameUk,
       group: category.groupName,
+      mccCodes: [],
       expenses: 0,
       income: 0,
       count: 0,
     };
 
+    if (!entry.mccCodes.includes(mcc)) entry.mccCodes.push(mcc);
     if (transaction.amount < 0) entry.expenses -= transaction.amount;
     else entry.income += transaction.amount;
     entry.count++;
-    categories.set(mcc, entry);
+    categories.set(category.name, entry);
   }
 
-  return [...categories.values()].sort((a, b) => b.expenses - a.expenses || b.income - a.income);
+  return [...categories.values()]
+    .map((entry) => ({ ...entry, mccCodes: entry.mccCodes.sort((a, b) => a - b) }))
+    .sort((a, b) => b.expenses - a.expenses || b.income - a.income);
 }
 
 function toCompactTransaction(transaction: Transaction) {

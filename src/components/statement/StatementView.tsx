@@ -14,27 +14,27 @@ import { existsSync } from "node:fs";
 import { writeFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import { join, parse } from "node:path";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { TokenError } from "../../api/monobank";
 import { STATEMENT_SELECTION_TTL, STORAGE_KEYS } from "../../data/constants";
-import { useClientInfo, usePinned, useRecentValue, useStatement } from "../../hooks";
-import { AccountOrJar, AccountType, Period, SavedPeriod } from "../../types";
+import { useBudgets, useRecentValue, useStatement, useStatementAccount } from "../../hooks";
+import { AccountOrJar, Period, SavedPeriod } from "../../types";
 import {
   DEFAULT_PERIOD,
   filterTransactions,
   formatAmount,
+  getBudgetMonth,
+  getBudgetProgress,
   getCsvFileName,
-  getDefaultItem,
-  getFlagImage,
-  getItemTitle,
   getStatementItemTitle,
   groupByDay,
   isAccount,
+  isPreset,
   isSavedPeriod,
-  isString,
   summarize,
   toCsv,
 } from "../../utils";
+import AccountDropdown from "../AccountDropdown";
 import TokenErrorEmptyView, { showInvalidTokenToast } from "../TokenErrorEmptyView";
 import StatementActionsSection, { StatementActionsProps } from "./StatementActionsSection";
 import SummaryListItem from "./SummaryListItem";
@@ -49,130 +49,20 @@ export default function StatementView(props: { account?: AccountOrJar }) {
 }
 
 function StatementCommand() {
-  const {
-    data: clientInfo,
-    isLoading: isLoadingAccounts,
-    isLoadingFromStorage: isLoadingCachedAccounts,
-    isError,
-    tokenError,
-  } = useClientInfo();
-  const {
-    value: selectedId = "",
-    setValue: setSelectedId,
-    isLoading: isLoadingSelected,
-  } = useRecentValue(STORAGE_KEYS.statementAccount, STATEMENT_SELECTION_TTL, isString);
-  const pinned = usePinned<AccountOrJar>(STORAGE_KEYS.pinnedAccounts, getItemTitle);
-
-  useEffect(() => {
-    if (isError && !tokenError) {
-      showToast({ style: Toast.Style.Failure, title: "Something went wrong", message: "Failed to load accounts" });
-    }
-  }, [isError, tokenError]);
-
-  const cards = clientInfo.accounts.filter((account) => account.type !== AccountType.FOP);
-  const fops = clientInfo.accounts.filter((account) => account.type === AccountType.FOP);
-  const { jars } = clientInfo;
-  const allItems: AccountOrJar[] = [...cards, ...fops, ...jars];
-
-  const account = resolveAccount();
-
-  // Every account loaded is a statement request, limited to one a minute. So nothing is picked until the saved
-  // choice, the pins and the cached accounts are all read, and a default is never used in place of a saved
-  // account that the accounts being fetched may still contain.
-  function resolveAccount() {
-    if (isLoadingSelected || pinned.isLoading || isLoadingCachedAccounts) return undefined;
-
-    const selected = allItems.find((item) => item.id === selectedId);
-    if (selected) return selected;
-    if (selectedId && isLoadingAccounts) return undefined;
-
-    return getDefaultItem(allItems, pinned.pinnedIds);
-  }
+  const { account, setAccountId, sections, isLoading, tokenError } = useStatementAccount();
 
   const dropdown = account && (
     // Rendered only once the account is known, so it starts on it instead of the first item.
-    <AccountDropdown
-      value={account.id}
-      onChange={setSelectedId}
-      sections={getSections({ cards, fops, jars, pinnedIds: pinned.pinnedIds })}
-    />
+    <AccountDropdown value={account.id} onChange={setAccountId} sections={sections} />
   );
 
   return (
     <StatementList
       account={account}
       accountDropdown={dropdown}
-      isLoadingAccounts={isLoadingAccounts || isLoadingSelected || pinned.isLoading}
+      isLoadingAccounts={isLoading}
       accountsTokenError={tokenError}
     />
-  );
-}
-
-interface DropdownSection {
-  title: string;
-  items: AccountOrJar[];
-}
-
-/** Pinned items first, in pinned order, then cards, FOP accounts and jars without them, as in "Show Accounts". */
-function getSections(options: {
-  cards: AccountOrJar[];
-  fops: AccountOrJar[];
-  jars: AccountOrJar[];
-  pinnedIds: string[];
-}) {
-  const { cards, fops, jars, pinnedIds } = options;
-  const allItems = [...cards, ...fops, ...jars];
-  const pinnedItems = pinnedIds
-    .map((id) => allItems.find((item) => item.id === id))
-    .filter((item): item is AccountOrJar => item !== undefined);
-  const isUnpinned = (item: AccountOrJar) => !pinnedIds.includes(item.id);
-
-  const sections: DropdownSection[] = [
-    { title: "Pinned", items: pinnedItems },
-    { title: "Cards", items: cards.filter(isUnpinned) },
-    { title: "FOP Accounts", items: fops.filter(isUnpinned) },
-    { title: "Jars", items: jars.filter(isUnpinned) },
-  ];
-  return sections.filter((section) => section.items.length > 0);
-}
-
-/**
- * `onChange` is only called when the user picks a different account.
- *
- * When the dropdown first appears, Raycast calls `onChange` with its first item, even when `value` is another
- * one. Saved as a choice, that event replaced the remembered account with the first one on every launch.
- * It is sent once per launch, not when the items change or the dropdown re-renders, so it is skipped once.
- */
-function AccountDropdown(props: { value: string; onChange: (id: string) => void; sections: DropdownSection[] }) {
-  const { value, onChange, sections } = props;
-  const isInitialEventPending = useRef(true);
-  const firstItemId = sections[0]?.items[0]?.id;
-
-  function handleChange(id: string) {
-    // The check on the id keeps a user's pick if Raycast ever stops sending that event.
-    if (isInitialEventPending.current) {
-      isInitialEventPending.current = false;
-      if (id === firstItemId) return;
-    }
-    if (id !== value) onChange(id);
-  }
-
-  return (
-    <List.Dropdown tooltip="Select Account" placeholder="Search Accounts…" value={value} onChange={handleChange}>
-      {sections.map((section) => (
-        <List.Dropdown.Section key={section.title} title={section.title}>
-          {section.items.map((item) => (
-            <List.Dropdown.Item
-              key={item.id}
-              value={item.id}
-              title={getStatementItemTitle(item)}
-              icon={getFlagImage(item.currency.code)}
-              keywords={isAccount(item) ? [item.currency.code, item.type, ...item.maskedPan] : [item.currency.code]}
-            />
-          ))}
-        </List.Dropdown.Section>
-      ))}
-    </List.Dropdown>
   );
 }
 
@@ -212,6 +102,15 @@ function StatementList(props: {
   const days = useMemo(() => groupByDay(filtered), [filtered]);
   const summary = useMemo(() => summarize(filtered, account?.currency), [filtered, account?.currency]);
 
+  // Budgets count UAH accounts for a calendar month, from every loaded transaction, whatever the search.
+  const { budgets } = useBudgets();
+  const isUah = account?.currency.code === "UAH";
+  const budgetMonth = useMemo(() => (isUah ? getBudgetMonth(period) : undefined), [isUah, period]);
+  const budgetProgress = useMemo(
+    () => (budgetMonth ? getBudgetProgress(budgets, transactions, budgetMonth) : []),
+    [budgets, transactions, budgetMonth],
+  );
+
   const accountTitle = account ? getStatementItemTitle(account) : undefined;
   const cashbackType = account && isAccount(account) ? account.cashbackType : undefined;
   const isLoading = isLoadingAccounts || isLoadingPeriod || statement.isLoading;
@@ -240,6 +139,8 @@ function StatementList(props: {
     onCopyCsv: transactions.length ? copyCsv : undefined,
     onRefresh: statement.refresh,
     onToggleDetails: () => setIsShowingDetail((isShowingDetail) => !isShowingDetail),
+    // "Manage Budgets…" loads its own month: the statement's period may not be one.
+    budgets: { account, initialMonth: isPreset(period) && period.preset === "lastMonth" ? "lastMonth" : "thisMonth" },
   };
 
   function renderEmptyView() {
@@ -288,6 +189,9 @@ function StatementList(props: {
           periodLabel={statement.period.label}
           searchText={searchText.trim()}
           totalCount={transactions.length}
+          budgetProgress={budgetProgress}
+          budgetMonth={budgetMonth}
+          isPartial={hasMore}
           statement={statementActions}
         />
       )}

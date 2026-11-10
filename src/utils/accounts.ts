@@ -95,10 +95,26 @@ export function compareJarsByGoal(a: Jar, b: Jar) {
 }
 
 // Hex colors, not `Color.Green`: the progress ring is an SVG, and the menu bar draws a Raycast color name in it as black.
-const progressColors = {
-  light: { color: "#34C759", background: "black", backgroundOpacity: 0.15 },
-  dark: { color: "#30D158", background: "white", backgroundOpacity: 0.25 },
+export const progressColors = {
+  green: { light: "#34C759", dark: "#30D158" },
+  orange: { light: "#FF9500", dark: "#FF9F0A" },
+  red: { light: "#FF3B30", dark: "#FF453A" },
+} satisfies Record<string, { light: string; dark: string }>;
+
+const ringBackgrounds = {
+  light: { background: "black", backgroundOpacity: 0.15 },
+  dark: { background: "white", backgroundOpacity: 0.25 },
 };
+
+/** A progress ring for `progress` from 0 to 1 (more is drawn full), with light and dark variants. */
+export function getProgressRing(
+  progress: number,
+  colors: { light: string; dark: string } = progressColors.green,
+): Image.ImageLike {
+  const value = Math.min(Math.max(progress, 0), 1);
+  const ring = (mode: "light" | "dark") => getProgressIcon(value, colors[mode], ringBackgrounds[mode]);
+  return { source: { light: ring("light"), dark: ring("dark") } };
+}
 
 /** A progress ring for jars with a goal, a check mark once it's reached, and coins for jars without a goal. */
 export function getJarIcon(jar: Jar): Image.ImageLike {
@@ -106,8 +122,7 @@ export function getJarIcon(jar: Jar): Image.ImageLike {
   if (progress === undefined) return Icon.Coins;
   if (progress >= 1) return { source: Icon.CheckCircle, tintColor: Color.Green };
 
-  const ring = ({ color, ...options }: (typeof progressColors)["light"]) => getProgressIcon(progress, color, options);
-  return { source: { light: ring(progressColors.light), dark: ring(progressColors.dark) } };
+  return getProgressRing(progress);
 }
 
 /** The progress as a whole percentage, rounded down so it shows 100% only once the goal is reached. */

@@ -1,6 +1,7 @@
 import { Action, ActionPanel, Icon } from "@raycast/api";
 import { shortcuts } from "../../data/shortcuts";
-import { Period } from "../../types";
+import { AccountOrJar, Period } from "../../types";
+import BudgetsView, { BudgetPeriod } from "../budgets/BudgetsView";
 import PeriodForm from "./PeriodForm";
 
 export interface StatementActionsProps {
@@ -11,11 +12,13 @@ export interface StatementActionsProps {
   onCopyCsv?: () => void;
   onRefresh: () => void;
   onToggleDetails: () => void;
+  /** The account "Manage Budgets…" shows progress for, and the month it opens on. */
+  budgets: { account?: AccountOrJar; initialMonth: BudgetPeriod };
 }
 
 /** Actions for the whole statement, shown on every item. */
 export default function StatementActionsSection(props: StatementActionsProps) {
-  const { period, onChangePeriod, onExportCsv, onCopyCsv, onRefresh, onToggleDetails } = props;
+  const { period, onChangePeriod, onExportCsv, onCopyCsv, onRefresh, onToggleDetails, budgets } = props;
 
   return (
     <ActionPanel.Section>
@@ -29,6 +32,12 @@ export default function StatementActionsSection(props: StatementActionsProps) {
         <Action title="Export to CSV" icon={Icon.Download} shortcut={shortcuts.exportCsv} onAction={onExportCsv} />
       )}
       {onCopyCsv && <Action title="Copy as CSV" icon={Icon.CopyClipboard} onAction={onCopyCsv} />}
+      <Action.Push
+        title="Manage Budgets…"
+        icon={Icon.Coins}
+        shortcut={shortcuts.manageBudgets}
+        target={<BudgetsView account={budgets.account} initialMonth={budgets.initialMonth} />}
+      />
       <Action title="Refresh" icon={Icon.ArrowClockwise} shortcut={shortcuts.refresh} onAction={onRefresh} />
       <Action
         title="Toggle Details"
