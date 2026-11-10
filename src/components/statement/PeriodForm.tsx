@@ -2,6 +2,7 @@ import { Action, ActionPanel, Form, useNavigation } from "@raycast/api";
 import { useState } from "react";
 import { Period, PeriodPreset } from "../../types";
 import { STATEMENT_MAX_PERIOD } from "../../data/constants";
+import { getHistoryCutoff } from "../../services/statement";
 import {
   endOfDay,
   formatDate,
@@ -33,16 +34,23 @@ function getCustomRange(from: Date, to: Date, now: Date) {
   };
 }
 
-/** The error of a custom range: a start after the end on From, a range too long or in the future on To. */
-function getRangeErrors(fromDate: Date | null, toDate: Date | null, now: Date): Errors {
+/**
+ * The error of a custom range: a start after the end on From, a range too long or in the future on To. A range
+ * starting on or after `storedFrom` (unix seconds) is kept locally, so it can be any length.
+ */
+function getRangeErrors(fromDate: Date | null, toDate: Date | null, now: Date, storedFrom: number): Errors {
   if (!fromDate || !toDate) return {};
 
   const { from, to } = getCustomRange(fromDate, toDate, now);
-  const error = validatePeriod(from, to, now);
+  const isStored = from >= storedFrom;
+  // A stored range skips the length check; `from >= to` and a future end still fail.
+  const error = validatePeriod(isStored ? Math.max(from, to - STATEMENT_MAX_PERIOD) : from, to, now);
   if (!error) return {};
   if (from >= to) return { from: error };
   if (to - from > STATEMENT_MAX_PERIOD) {
-    return { to: `Up to 31 days: end on ${formatDate(new Date(getLatestPeriodEnd(from) * 1000))} or earlier` };
+    const latestEnd = formatDate(new Date(getLatestPeriodEnd(from) * 1000));
+    const cutoff = formatDate(new Date(storedFrom * 1000), { year: true });
+    return { to: `Up to 31 days: end on ${latestEnd} or earlier, or start on ${cutoff} or later` };
   }
   return { to: error };
 }
@@ -66,6 +74,8 @@ export default function PeriodForm(props: { period: Period; onChange: (period: P
   const [from, setFrom] = useState<Date | null>(initial.from);
   const [to, setTo] = useState<Date | null>(initial.to);
   const [max] = useState(() => new Date());
+  // Ranges from here on are stored locally ("Keep Statements For"), so they can be any length.
+  const [storedFrom] = useState(() => getHistoryCutoff(Date.now()));
 
   function clearError() {
     if (errors.from || errors.to) setErrors({});
@@ -84,13 +94,13 @@ export default function PeriodForm(props: { period: Period; onChange: (period: P
     }
 
     const now = new Date();
-    if (Object.keys(getRangeErrors(values.from, values.to, now)).length) return;
+    if (Object.keys(getRangeErrors(values.from, values.to, now, storedFrom)).length) return;
 
     onChange(getCustomRange(values.from, values.to, now));
     navigation.pop();
   }
 
-  const rangeErrors = getRangeErrors(from, to, new Date());
+  const rangeErrors = getRangeErrors(from, to, new Date(), storedFrom);
 
   return (
     <Form
@@ -138,7 +148,9 @@ export default function PeriodForm(props: { period: Period; onChange: (period: P
               clearError();
             }}
           />
-          <Form.Description text="monobank returns at most 31 days at a time." />
+          <Form.Description
+            text={`From ${formatDate(new Date(storedFrom * 1000), { year: true })}, a period can be any length ("Keep Statements For"). Before that, up to 31 days, the most monobank returns at once.`}
+          />
         </>
       )}
     </Form>
