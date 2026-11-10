@@ -21,6 +21,7 @@ import { useClientInfo, usePinned, useRecentValue, useStatement } from "../../ho
 import { AccountOrJar, AccountType, Period, SavedPeriod } from "../../types";
 import {
   DEFAULT_PERIOD,
+  filterTransactions,
   formatAmount,
   getCsvFileName,
   getDefaultItem,
@@ -182,6 +183,7 @@ function StatementList(props: {
 }) {
   const { account, accountDropdown, isLoadingAccounts = false, accountsTokenError } = props;
   const [isShowingDetail, setIsShowingDetail] = useState(false);
+  const [searchText, setSearchText] = useState("");
   const {
     value: savedPeriod,
     setValue: setSavedPeriod,
@@ -204,8 +206,10 @@ function StatementList(props: {
     if (tokenError === "invalid") showInvalidTokenToast();
   }, [tokenError]);
 
-  const days = useMemo(() => groupByDay(transactions), [transactions]);
-  const summary = useMemo(() => summarize(transactions), [transactions]);
+  // Filtered here rather than by Raycast, so the Summary stays at the top and totals what the search found.
+  const filtered = useMemo(() => filterTransactions(transactions, searchText), [transactions, searchText]);
+  const days = useMemo(() => groupByDay(filtered), [filtered]);
+  const summary = useMemo(() => summarize(filtered, account?.currency), [filtered, account?.currency]);
 
   const accountTitle = account ? getItemTitle(account) : undefined;
   const cashbackType = account && isAccount(account) ? account.cashbackType : undefined;
@@ -242,7 +246,7 @@ function StatementList(props: {
       return <TokenErrorEmptyView tokenError={tokenError} purpose="see your statement" />;
     }
 
-    // With transactions, an empty list means the search matched nothing: Raycast's default view says so.
+    // With transactions, the list is never empty: the Summary is always shown, even when the search matches nothing.
     if (transactions.length) return null;
 
     if (!account) {
@@ -270,13 +274,21 @@ function StatementList(props: {
       navigationTitle={
         accountTitle && statement.period ? `${accountTitle} · ${statement.period.label}` : "Show Statement"
       }
+      filtering={false}
+      onSearchTextChange={setSearchText}
       searchBarPlaceholder="Search transactions"
       searchBarAccessory={accountDropdown}
     >
       {renderEmptyView()}
 
       {transactions.length > 0 && statement.period && (
-        <SummaryListItem summary={summary} periodLabel={statement.period.label} statement={statementActions} />
+        <SummaryListItem
+          summary={summary}
+          periodLabel={statement.period.label}
+          searchText={searchText.trim()}
+          totalCount={transactions.length}
+          statement={statementActions}
+        />
       )}
 
       {days.map((day) => (

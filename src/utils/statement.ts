@@ -177,7 +177,7 @@ export interface CategorySpending {
 }
 
 export interface StatementSummary {
-  /** `undefined` when there are no transactions. */
+  /** `undefined` when there are no transactions and no fallback currency was given. */
   currency?: Currency;
   income: number;
   /** Positive. */
@@ -190,7 +190,8 @@ export interface StatementSummary {
   categories: CategorySpending[];
 }
 
-export function summarize(transactions: Transaction[]): StatementSummary {
+/** `currency` is used when there are no transactions, e.g. when a search matches none. */
+export function summarize(transactions: Transaction[], currency?: Currency): StatementSummary {
   const categories = new Map<string, CategorySpending>();
   let income = 0;
   let expenses = 0;
@@ -216,7 +217,7 @@ export function summarize(transactions: Transaction[]): StatementSummary {
   }
 
   return {
-    currency: transactions[0]?.currency,
+    currency: transactions[0]?.currency ?? currency,
     income,
     expenses,
     cashback,
@@ -224,6 +225,39 @@ export function summarize(transactions: Transaction[]): StatementSummary {
     holdCount,
     categories: [...categories.values()].sort((a, b) => b.amount - a.amount),
   };
+}
+
+/** Fields a transaction is found by: description, comment, counterparty, category in both languages, MCC and amount. */
+export function getSearchTexts(t: Transaction) {
+  const texts = [
+    t.description,
+    t.comment,
+    t.counterName,
+    t.category.name,
+    t.category.nameUk,
+    t.category.groupName,
+    t.category.groupNameUk,
+    String(t.mcc),
+    formatPlainAmount(Math.abs(t.amount), t.currency),
+    String(Math.trunc(Math.abs(t.amount))),
+  ];
+  return texts.filter((text): text is string => !!text);
+}
+
+/** Lowercase, with the different apostrophes made one, so "McDonald's" finds "McDonald’s". */
+function normalizeSearchText(text: string) {
+  return text.toLowerCase().replace(/[’ʼ‘`]/g, "'");
+}
+
+/** Transactions that contain every word of `query` in their search texts. An empty query returns `transactions`. */
+export function filterTransactions(transactions: Transaction[], query: string) {
+  const terms = normalizeSearchText(query.trim()).split(/\s+/).filter(Boolean);
+  if (!terms.length) return transactions;
+
+  return transactions.filter((transaction) => {
+    const text = normalizeSearchText(getSearchTexts(transaction).join("\n"));
+    return terms.every((term) => text.includes(term));
+  });
 }
 
 const csvColumns: [title: string, value: (transaction: Transaction) => string | number | undefined, isText?: true][] = [
