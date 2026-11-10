@@ -55,12 +55,13 @@ type Input = {
  *
  * Amounts are in the account currency; expenses are negative in `transactions` and positive in the totals.
  * `holdCount` counts transactions the merchant's bank hasn't settled yet, whose amounts may still change.
- * `incomplete: true` means the period has more than monobank returns in one request, and only transactions
- * since `loadedSince` are counted. When `account.usedBecauseNoneWasNamed` is true, tell the user which account
+ * `incomplete: true` means the period has more transactions than monobank returns in one request, and only
+ * transactions since `loadedSince` are counted. When `account.usedBecauseNoneWasNamed` is true, tell the user which account
  * was used.
  *
- * monobank allows one statement request per minute, so this can take up to a minute. Calling it again for the
- * same account and period within a minute (e.g. with other filters) is instant.
+ * monobank allows one statement request per minute, so this can take up to a minute. Transactions are stored, so
+ * calling it again for a past period that was already loaded is instant, and for a period that runs until today it's
+ * instant within a minute of the last request (e.g. with other filters).
  */
 export default async function tool(input: Input) {
   const { items, defaultItem } = await loadClientInfo();
@@ -76,8 +77,8 @@ export default async function tool(input: Input) {
   }
 
   const now = Math.floor(Date.now() / 1000);
-  const { from, to, key } = getPeriod(input, now);
-  const statement = await loadStatement(account.id, { from, to, key });
+  const { from, to } = getPeriod(input, now);
+  const statement = await loadStatement(account.id, { from, to });
   const matches = statement.items
     .map((item) => toTransaction(item, account.currency))
     .filter((transaction) => matchesInput(transaction, input));
@@ -85,7 +86,6 @@ export default async function tool(input: Input) {
   const summary = summarize(matches);
   const round = (amount: number) => roundAmount(amount, account.currency);
   const limit = Math.min(Math.max(Math.floor(input.limit ?? DEFAULT_LIMIT), 1), MAX_LIMIT);
-  const oldest = statement.items[statement.items.length - 1];
 
   return {
     account: {
@@ -112,16 +112,15 @@ export default async function tool(input: Input) {
     transactions: matches.slice(0, limit).map(toCompactTransaction),
     truncated: matches.length > limit,
     incomplete: statement.incomplete,
-    loadedSince: statement.incomplete && oldest ? toLocalIso(oldest.time) : undefined,
+    loadedSince: statement.loadedSince !== undefined ? toLocalIso(statement.loadedSince) : undefined,
   };
 }
 
 /** Resolves the period to unix seconds. `to` is left out when the period ends now. */
-function getPeriod(input: Input, now: number): { from: number; to?: number; key: string } {
+function getPeriod(input: Input, now: number): { from: number; to?: number } {
   if (input.period || !input.from) {
-    // The same keys as "Show Statement" presets, so both share cached statements.
-    const { from, to, key } = resolvePeriod({ preset: input.period ?? "last31Days" });
-    return { from, to, key };
+    const { from, to } = resolvePeriod({ preset: input.period ?? "last31Days" });
+    return { from, to };
   }
 
   const from = parseDateTime(input.from);
@@ -133,7 +132,7 @@ function getPeriod(input: Input, now: number): { from: number; to?: number; key:
     throw new Error(`\`from\` must be before \`to\` and not in the future. Today is ${toLocalIso(now).slice(0, 10)}.`);
   }
 
-  return { from, to, key: `${from}-${to ?? "now"}` };
+  return { from, to };
 }
 
 function matchesInput(transaction: Transaction, input: Input) {

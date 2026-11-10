@@ -47,3 +47,9 @@ export type PeriodPreset = "today" | "last7Days" | "thisMonth" | "lastMonth" | "
 
 /** A preset, resolved relative to now, or a fixed range in unix seconds. */
 export type Period = { preset: PeriodPreset } | { from: number; to: number };
+
+/** The period last chosen in a statement, with the account it was chosen on. */
+export interface SavedPeriod {
+  accountId: string;
+  period: Period;
+}

@@ -20,9 +20,21 @@ export default function PeriodForm(props: { period: Period; onChange: (period: P
   const [errors, setErrors] = useState<{ from?: string; to?: string }>({});
 
   // A custom range starts from the current period, so switching to it is a small step.
-  const current = resolvePeriod(period);
-  const defaultFrom = new Date(current.from * 1000);
-  const defaultTo = new Date((current.to ?? Date.now() / 1000) * 1000);
+  // Computed once: the pickers are controlled, so new props on each render can't reset an entered date.
+  const [initial] = useState(() => {
+    const current = resolvePeriod(period);
+    return {
+      from: new Date(current.from * 1000),
+      to: new Date((current.to ?? Date.now() / 1000) * 1000),
+    };
+  });
+  const [from, setFrom] = useState<Date | null>(initial.from);
+  const [to, setTo] = useState<Date | null>(initial.to);
+  const [max] = useState(() => new Date());
+
+  function clearError() {
+    if (errors.from || errors.to) setErrors({});
+  }
 
   function onSubmit(values: FormValues) {
     if (values.choice !== "custom") {
@@ -77,19 +89,25 @@ export default function PeriodForm(props: { period: Period; onChange: (period: P
             id="from"
             title="From"
             type={Form.DatePicker.Type.Date}
-            defaultValue={defaultFrom}
-            max={new Date()}
+            value={from}
+            max={max}
             error={errors.from}
-            onChange={() => setErrors({})}
+            onChange={(date) => {
+              setFrom(date);
+              clearError();
+            }}
           />
           <Form.DatePicker
             id="to"
             title="To"
             type={Form.DatePicker.Type.Date}
-            defaultValue={defaultTo}
-            max={new Date()}
+            value={to}
+            max={max}
             error={errors.to}
-            onChange={() => setErrors({})}
+            onChange={(date) => {
+              setTo(date);
+              clearError();
+            }}
           />
           <Form.Description text="monobank returns at most 31 days at a time." />
         </>

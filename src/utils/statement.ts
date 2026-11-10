@@ -1,6 +1,6 @@
 import { Color, Icon, List } from "@raycast/api";
 import { CHECK_GOV_URL, STATEMENT_MAX_PERIOD } from "../data/constants";
-import { Currency, Period, PeriodPreset, Transaction } from "../types";
+import { Currency, Period, PeriodPreset, SavedPeriod, Transaction } from "../types";
 import { formatAmount, formatPlainAmount } from "./currency";
 
 export const periodPresetTitles: Record<PeriodPreset, string> = {
@@ -42,6 +42,18 @@ export function endOfDay(date: Date) {
 
 export function isPreset(period: Period): period is { preset: PeriodPreset } {
   return "preset" in period;
+}
+
+/** Whether a value read from storage is a `SavedPeriod`. */
+export function isSavedPeriod(value: unknown): value is SavedPeriod {
+  if (typeof value !== "object" || value === null) return false;
+  const { accountId, period } = value as Partial<Record<keyof SavedPeriod, unknown>>;
+  if (typeof accountId !== "string" || typeof period !== "object" || period === null) return false;
+
+  const { preset, from, to } = period as Record<string, unknown>;
+  return (
+    (typeof preset === "string" && preset in periodPresetTitles) || (typeof from === "number" && typeof to === "number")
+  );
 }
 
 export function resolvePeriod(period: Period, now = new Date()): ResolvedPeriod {

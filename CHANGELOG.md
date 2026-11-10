@@ -9,7 +9,8 @@
 - Choose a period (today, last 7 days, this or last month, last 31 days, or a custom range), see a summary with spending by category, and export to CSV
 - Transaction details include the merchant category, cashback, balance, comment, receipt number and counterparty, and mark transactions the merchant's bank hasn't settled yet as "Hold"
 - Requests wait for monobank's 60-second rate limit with a countdown, and statements are cached
-- Pinned accounts from "Show Accounts" appear at the top of the account dropdown in "Show Statement". The chosen account is remembered for 5 minutes since it was last used; after that, the first pinned account (or the first UAH card) opens, and a different account no longer loads by mistake when the command opens
+- The statement is stored per account and refreshed for the last 31 days whenever monobank allows, updating transactions that changed (e.g. a settled hold). Switching between periods it already covers is instant, and past periods load only once. Transactions older than 3 months are cleaned up
+- Pinned accounts from "Show Accounts" appear at the top of the account dropdown in "Show Statement". The chosen account and period are remembered for 5 minutes since they were last used; after that, the first pinned account (or the first UAH card) opens with Last 31 Days, and a different account no longer loads by mistake when the command opens. The period is remembered only for the account it was chosen on, so switching accounts resets it to Last 31 Days
 - Added a "Convert Currency" action (`⌘ O`) in "Show Currency Rates". It converts both ways, using the sell rate when you buy a currency and the buy rate when you sell it
 - Updated dependencies to the latest Raycast API
 - Adopted Raycast common shortcuts: Pin is now `⌘ .` (`Ctrl .` on Windows) and Copy IBAN is now `⌘ ⇧ C` (`Ctrl ⇧ C` on Windows)

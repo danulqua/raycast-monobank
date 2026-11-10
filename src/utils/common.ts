@@ -20,3 +20,7 @@ export function formatUpdatedAt(time: number) {
 
   return `${date.toLocaleDateString(undefined, { day: "numeric", month: "short" })}, ${clock}`;
 }
+
+export function isString(value: unknown): value is string {
+  return typeof value === "string";
+}

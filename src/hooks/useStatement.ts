@@ -1,21 +1,19 @@
 import { LocalStorage, Toast, getPreferenceValues, showToast } from "@raycast/api";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toTransaction } from "../api/mappers";
+import { ApiError, RateLimitError, getStatement, getTokenError, requireToken } from "../api/monobank";
+import { STATEMENT_RATE_LIMIT, STATEMENT_REQUEST_DELAY, STORAGE_KEYS } from "../data/constants";
 import {
-  ApiError,
-  RateLimitError,
-  getStatement,
-  getTokenError,
-  getTokenFingerprint,
-  requireToken,
-} from "../api/monobank";
-import { STATEMENT_CACHE_SIZE, STATEMENT_RATE_LIMIT, STATEMENT_REQUEST_DELAY, STORAGE_KEYS } from "../data/constants";
-import { StatementCache, StatementCacheEntry, appendOlder, mergeFirstPage } from "../services/statement";
+  RequestMode,
+  StoredStatement,
+  getPeriodGaps,
+  getPeriodItems,
+  planRequest,
+  readStoredStatement,
+  saveResponse,
+} from "../services/statement";
 import { AccountOrJar, Period } from "../types";
 import { resolvePeriod } from "../utils/statement";
-import { useLocalStorage } from "./useLocalStorage";
-
-const initialCache: StatementCache = { entries: [] };
 
 /** A load was replaced by a newer one, or the view was closed, before it sent its request. */
 class CancelledError extends Error {}
@@ -23,26 +21,26 @@ class CancelledError extends Error {}
 /**
  * The statement of `account` for `period`. Nothing is loaded while either is `undefined`.
  *
- * Statements are cached, and a cached one is refetched once it's older than monobank's 60-second rate
- * limit. Requests are spaced to respect that limit across launches, with a countdown toast while waiting.
+ * Each account has one stored statement, and a period is shown by filtering it. A period within the last 31 days
+ * resyncs all 31 days once the last sync is older than monobank's 60-second rate limit; an older period is fetched
+ * once. Requests are spaced to respect that limit across launches, with a countdown toast while waiting.
  */
 export function useStatement(account: AccountOrJar | undefined, period: Period | undefined) {
   const { token } = getPreferenceValues<Preferences>();
-  const tokenFingerprint = useMemo(() => getTokenFingerprint(token), [token]);
-  const {
-    data: cache,
-    setData: setCache,
-    isLoading: isLoadingCache,
-  } = useLocalStorage(STORAGE_KEYS.statementCache, initialCache);
+  const [stored, setStored] = useState<{ accountId: string; statement: StoredStatement }>();
   const [isFetching, setIsFetching] = useState(false);
   const [error, setError] = useState<unknown>();
   const [waitSeconds, setWaitSeconds] = useState(0);
   // Incremented by every load and on unmount. A load whose number is no longer current stops waiting.
   const generation = useRef(0);
+  // The request of the current load, so an identical one isn't sent again while it runs.
+  const pendingRequest = useRef<string | undefined>(undefined);
+  const accountId = useRef(account?.id);
+  accountId.current = account?.id;
 
   const resolvedPeriod = useMemo(() => period && resolvePeriod(period), [period]);
-  const key = account && resolvedPeriod ? `${tokenFingerprint}:${account.id}:${resolvedPeriod.key}` : undefined;
-  const entry = key ? cache.entries.find((entry) => entry.key === key) : undefined;
+  const statement = account && stored?.accountId === account.id ? stored.statement : undefined;
+  const isLoadingStored = !!account && !statement;
 
   useEffect(
     () => () => {
@@ -51,15 +49,49 @@ export function useStatement(account: AccountOrJar | undefined, period: Period |
     [],
   );
 
-  const load = useCallback(
-    async (mode: "refresh" | "older") => {
-      if (!account || !resolvedPeriod || !key) return;
+  useEffect(() => {
+    if (!account) return;
 
-      const oldest = entry?.items[entry.items.length - 1];
-      if (mode === "older" && !oldest) return;
+    let isCancelled = false;
+    readStoredStatement(account.id).then(
+      (statement) => {
+        if (!isCancelled) setStored({ accountId: account.id, statement });
+      },
+      (error) => {
+        console.error(error);
+        if (!isCancelled) setError(error);
+      },
+    );
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [account?.id]);
+
+  const load = useCallback(
+    async (mode: RequestMode) => {
+      if (!account || !resolvedPeriod || !statement) return;
+
+      const request = planRequest(statement, resolvedPeriod, mode, Date.now());
+      if (!request) {
+        if (mode === "auto") {
+          // Stop waiting for a request this period doesn't need.
+          generation.current++;
+          pendingRequest.current = undefined;
+          setIsFetching(false);
+          setWaitSeconds(0);
+          setError(undefined);
+        }
+        return;
+      }
+
+      // E.g. switching between periods of the last 31 days while their sync is waiting.
+      const requestKey = `${account.id}:${request.from}-${request.to ?? "now"}`;
+      if (mode === "auto" && pendingRequest.current === requestKey) return;
 
       const current = ++generation.current;
       const isCurrent = () => generation.current === current;
+      pendingRequest.current = requestKey;
 
       setIsFetching(true);
       setError(undefined);
@@ -68,28 +100,15 @@ export function useStatement(account: AccountOrJar | undefined, period: Period |
         // Token problems are reported right away, without waiting for the rate limit.
         requireToken(token);
 
-        const to = mode === "older" ? oldest!.time : resolvedPeriod.to;
         const page = await withRateLimit(
-          () => getStatement(token, account.id, resolvedPeriod.from, to),
+          () => getStatement(token, account.id, request.from, request.to),
           isCurrent,
           setWaitSeconds,
         );
-        const fetchedAt = Date.now();
 
         // Stored even if a newer load has started, since the request has already been spent.
-        setCache((prev) => {
-          const existing = prev.entries.find((entry) => entry.key === key);
-          if (mode === "older" && !existing) return prev;
-
-          const next: StatementCacheEntry =
-            mode === "older"
-              ? { ...existing!, ...appendOlder(existing!, page) }
-              : { key, fetchedAt, ...mergeFirstPage(existing, page) };
-
-          return {
-            entries: [next, ...prev.entries.filter((entry) => entry.key !== key)].slice(0, STATEMENT_CACHE_SIZE),
-          };
-        });
+        const next = await saveResponse(account.id, request, page, Date.now());
+        if (accountId.current === account.id) setStored({ accountId: account.id, statement: next });
       } catch (error) {
         if (error instanceof CancelledError || !isCurrent()) return;
 
@@ -105,46 +124,43 @@ export function useStatement(account: AccountOrJar | undefined, period: Period |
         }
       } finally {
         if (isCurrent()) {
+          pendingRequest.current = undefined;
           setIsFetching(false);
           setWaitSeconds(0);
         }
       }
     },
-    [token, account?.id, resolvedPeriod, key, entry, setCache],
+    [token, account?.id, resolvedPeriod, statement],
   );
 
-  // Loads when the account or period changes, unless the cached statement is still fresh.
+  // Loads what the account and period need when either changes.
   useEffect(() => {
-    if (isLoadingCache || !key) return;
-
-    if (entry && Date.now() - entry.fetchedAt < STATEMENT_RATE_LIMIT) {
-      // Stop waiting for a statement that's no longer shown.
-      generation.current++;
-      setIsFetching(false);
-      setWaitSeconds(0);
-      setError(undefined);
-      return;
-    }
-
-    load("refresh");
-  }, [key, isLoadingCache]);
+    if (isLoadingStored || !resolvedPeriod) return;
+    load("auto");
+  }, [account?.id, resolvedPeriod?.key, isLoadingStored]);
 
   const tokenError = getTokenError(error);
 
   const transactions = useMemo(() => {
-    // Without a token monobank accepts, cached data can't be confirmed to belong to the user.
-    if (!account || !entry || tokenError) return [];
-    return entry.items.map((item) => toTransaction(item, account.currency));
-  }, [account, entry, tokenError]);
+    // Without a token monobank accepts, stored data can't be confirmed to belong to the user.
+    if (!account || !statement || !resolvedPeriod || tokenError) return [];
+    return getPeriodItems(statement, resolvedPeriod).map((item) => toTransaction(item, account.currency));
+  }, [account, statement, resolvedPeriod, tokenError]);
+
+  const hasGaps = useMemo(
+    () => !!statement && !!resolvedPeriod && getPeriodGaps(statement, resolvedPeriod, Date.now()).length > 0,
+    [statement, resolvedPeriod],
+  );
 
   return {
     transactions,
     /** The resolved period, for titles. */
     period: resolvedPeriod,
-    isLoading: isLoadingCache || isFetching,
+    isLoading: isLoadingStored || isFetching,
     error,
     tokenError,
-    hasMore: !tokenError && !!entry?.hasMore,
+    /** Whether the period has older transactions that aren't loaded yet. */
+    hasMore: !tokenError && !isFetching && hasGaps,
     loadOlder: useCallback(() => load("older"), [load]),
     refresh: useCallback(() => load("refresh"), [load]),
     /** Seconds left until the rate limit allows the next request, or 0 when not waiting. */

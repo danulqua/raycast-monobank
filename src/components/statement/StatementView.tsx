@@ -16,9 +16,9 @@ import { homedir } from "node:os";
 import { join, parse } from "node:path";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { TokenError } from "../../api/monobank";
-import { STATEMENT_ACCOUNT_TTL, STORAGE_KEYS } from "../../data/constants";
-import { useClientInfo, useLocalStorage, usePinned, useRecentSelection, useStatement } from "../../hooks";
-import { AccountOrJar, AccountType, Period } from "../../types";
+import { STATEMENT_SELECTION_TTL, STORAGE_KEYS } from "../../data/constants";
+import { useClientInfo, usePinned, useRecentValue, useStatement } from "../../hooks";
+import { AccountOrJar, AccountType, Period, SavedPeriod } from "../../types";
 import {
   DEFAULT_PERIOD,
   formatAmount,
@@ -28,6 +28,8 @@ import {
   getItemTitle,
   groupByDay,
   isAccount,
+  isSavedPeriod,
+  isString,
   summarize,
   toCsv,
 } from "../../utils";
@@ -53,10 +55,10 @@ function StatementCommand() {
     tokenError,
   } = useClientInfo();
   const {
-    selectedId,
-    setSelectedId,
+    value: selectedId = "",
+    setValue: setSelectedId,
     isLoading: isLoadingSelected,
-  } = useRecentSelection(STORAGE_KEYS.statementAccount, STATEMENT_ACCOUNT_TTL);
+  } = useRecentValue(STORAGE_KEYS.statementAccount, STATEMENT_SELECTION_TTL, isString);
   const pinned = usePinned<AccountOrJar>(STORAGE_KEYS.pinnedAccounts, getItemTitle);
 
   useEffect(() => {
@@ -181,10 +183,18 @@ function StatementList(props: {
   const { account, accountDropdown, isLoadingAccounts = false, accountsTokenError } = props;
   const [isShowingDetail, setIsShowingDetail] = useState(false);
   const {
-    data: period,
-    setData: setPeriod,
+    value: savedPeriod,
+    setValue: setSavedPeriod,
     isLoading: isLoadingPeriod,
-  } = useLocalStorage<Period>(STORAGE_KEYS.statementPeriod, DEFAULT_PERIOD);
+  } = useRecentValue<SavedPeriod>(STORAGE_KEYS.statementPeriod, STATEMENT_SELECTION_TTL, isSavedPeriod);
+  // Derived during render, so switching accounts resets the period at once: the old period is never
+  // requested for the new account.
+  const period = account && savedPeriod?.accountId === account.id ? savedPeriod.period : DEFAULT_PERIOD;
+
+  function setPeriod(period: Period) {
+    if (account) setSavedPeriod({ accountId: account.id, period });
+  }
+
   // Waits for the saved period, so the default one isn't fetched (and the rate limit spent) by mistake.
   const statement = useStatement(account, isLoadingPeriod ? undefined : period);
   const { transactions, hasMore } = statement;
