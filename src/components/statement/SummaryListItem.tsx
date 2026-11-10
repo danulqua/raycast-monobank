@@ -23,7 +23,9 @@ export default function SummaryListItem(props: {
 
   const income = formatAmount(summary.income, currency, { signed: true });
   const spent = formatAmount(summary.expenses, currency);
-  const net = summary.income - summary.expenses;
+  const net = formatAmount(summary.income - summary.expenses, currency, { signed: true });
+  const cashback = formatAmount(summary.cashback, currency);
+  const count = summary.holdCount ? `${summary.count} (${summary.holdCount} on hold)` : `${summary.count}`;
   const isSearching = searchText.length > 0;
 
   return (
@@ -38,32 +40,34 @@ export default function SummaryListItem(props: {
       detail={
         <List.Item.Detail
           metadata={
+            // Keys include the text: Raycast doesn't resize a label whose text changes in place,
+            // so a new key makes it recreate the label instead of truncating the new value.
             <Metadata>
-              <Metadata.Label title="Period" text={periodLabel} />
-              {isSearching && <Metadata.Label title="Search" text={searchText} />}
-              <Metadata.Label title="Income" text={{ value: income, color: Color.Green }} />
-              <Metadata.Label title="Spent" text={spent} />
-              <Metadata.Label title="Net" text={formatAmount(net, currency, { signed: true })} />
+              <Metadata.Label key={`period:${periodLabel}`} title="Period" text={periodLabel} />
+              {isSearching && <Metadata.Label key={`search:${searchText}`} title="Search" text={searchText} />}
+              <Metadata.Label key={`income:${income}`} title="Income" text={{ value: income, color: Color.Green }} />
+              <Metadata.Label key={`spent:${spent}`} title="Spent" text={spent} />
+              <Metadata.Label key={`net:${net}`} title="Net" text={net} />
               {summary.cashback !== 0 && (
-                <Metadata.Label title="Cashback" text={formatAmount(summary.cashback, currency)} />
+                <Metadata.Label key={`cashback:${cashback}`} title="Cashback" text={cashback} />
               )}
-              <Metadata.Label
-                title="Transactions"
-                text={summary.holdCount ? `${summary.count} (${summary.holdCount} on hold)` : `${summary.count}`}
-              />
+              <Metadata.Label key={`count:${count}`} title="Transactions" text={count} />
 
               {summary.categories.length > 0 && (
                 <>
                   <Metadata.Separator />
                   <Metadata.Label title="Spending by Category" />
-                  {summary.categories.map((category) => (
-                    <Metadata.Label
-                      key={category.mcc}
-                      title={category.name}
-                      icon={category.icon}
-                      text={`${formatAmount(category.amount, currency)} (${category.count})`}
-                    />
-                  ))}
+                  {summary.categories.map((category) => {
+                    const text = `${formatAmount(category.amount, currency)} (${category.count})`;
+                    return (
+                      <Metadata.Label
+                        key={`${category.mcc}:${text}`}
+                        title={category.name}
+                        icon={category.icon}
+                        text={text}
+                      />
+                    );
+                  })}
                 </>
               )}
             </Metadata>
