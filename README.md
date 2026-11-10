@@ -68,7 +68,7 @@ Browse the transactions of a card, FOP account or jar. Pick the account in the s
 
 monobank allows one statement request per 60 seconds. Statements are cached, and when a request has to wait, a countdown shows until it's sent. One request returns up to 500 transactions; use "Load Older Transactions" to get more.
 
-Statements are stored on your device for as long as the "Keep Statements For" preference says: 1 month, 3 months (the default), 6 months, 1 year or unlimited. With "Sync Statements" on, the history builds up day by day. Unlimited never deletes transactions, so it uses more disk space over time. Raising the setting doesn't bring back transactions already deleted; they load again when you open their period.
+Statements are stored on your device for as long as the "Keep Statements For" preference says: 1 month, 3 months (the default), 6 months, 1 year or unlimited. With "Sync Statements" on, the history is loaded in the background back to this length (a year for Unlimited). Unlimited never deletes transactions, so it uses more disk space over time. Raising the setting makes "Sync Statements" load the extra months again.
 
 ## Budgets
 
@@ -83,7 +83,13 @@ Set a monthly limit for one or more spending categories, e.g. "Cafes & Restauran
 
 Keeps the statements of all your cards, FOP accounts and jars up to date in the background, so "Show Statement" and AI answers have today's transactions right away, even for accounts you rarely open.
 
-monobank allows one statement request per 60 seconds, so the command runs every 2 minutes and syncs the last 31 days of one account per run: the first one not synced today, starting with the account "Show Statement" opens by default. Accounts already synced today, by this command, "Show Statement" or AI, are skipped, and once all are synced, runs make no requests until the next day. The command's subtitle in Raycast shows the progress, e.g. "Synced today: 4 of 6".
+monobank allows one statement request per 60 seconds, so the command runs every 2 minutes and makes one request per run:
+
+- First, it syncs the last 31 days of each account not synced today, starting with the account "Show Statement" opens by default. Accounts already synced today, by this command, "Show Statement" or AI, are skipped.
+- Once all are synced today, it loads older history, 31 days per run, back to the "Keep Statements For" preference (a year for Unlimited), so past periods open without waiting.
+- Once all of it is loaded, runs make no requests until the next day.
+
+The command's subtitle in Raycast shows the progress, e.g. "Synced today: 4 of 6 · History: 2 of 6".
 
 Background refresh is off until you open the command once or turn it on in its preferences. Opening it syncs the next account right away.
 
@@ -108,7 +114,7 @@ AI finds accounts and jars by their names, including the custom names you give a
 
 AI can also create, change and delete budgets; Raycast asks you to confirm before anything is saved.
 
-Conversions use monobank's current rates, the same way as "Convert Currency". Questions about transactions cover up to 31 days at a time and share the statement cache and the 60-second rate limit with "Show Statement", so an answer can take up to a minute.
+Conversions use monobank's current rates, the same way as "Convert Currency". Questions about transactions can be about any past period. Stored history (see "Keep Statements For") answers a period of any length, e.g. the last 3 months. monobank returns at most 31 days at once, so for a longer period before the stored history, AI offers the longest one that fits and asks before loading it. Questions share the statement cache and the 60-second rate limit with "Show Statement", so an answer can take up to a minute.
 
 ## Credits
 

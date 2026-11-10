@@ -1,7 +1,17 @@
 import { Action, ActionPanel, Form, useNavigation } from "@raycast/api";
 import { useState } from "react";
 import { Period, PeriodPreset } from "../../types";
-import { endOfDay, isPreset, periodPresetTitles, resolvePeriod, startOfDay, validatePeriod } from "../../utils";
+import { STATEMENT_MAX_PERIOD } from "../../data/constants";
+import {
+  endOfDay,
+  formatDate,
+  getLatestPeriodEnd,
+  isPreset,
+  periodPresetTitles,
+  resolvePeriod,
+  startOfDay,
+  validatePeriod,
+} from "../../utils";
 
 type Choice = PeriodPreset | "custom";
 
@@ -11,13 +21,38 @@ interface FormValues {
   to?: Date | null;
 }
 
+type Errors = { from?: string; to?: string };
+
 const presets = Object.entries(periodPresetTitles) as [PeriodPreset, string][];
+
+/** The whole From and To days, in unix seconds. A range ending today ends now, since monobank rejects future times. */
+function getCustomRange(from: Date, to: Date, now: Date) {
+  return {
+    from: Math.floor(startOfDay(from).getTime() / 1000),
+    to: Math.floor(Math.min(endOfDay(to).getTime(), now.getTime()) / 1000),
+  };
+}
+
+/** The error of a custom range: a start after the end on From, a range too long or in the future on To. */
+function getRangeErrors(fromDate: Date | null, toDate: Date | null, now: Date): Errors {
+  if (!fromDate || !toDate) return {};
+
+  const { from, to } = getCustomRange(fromDate, toDate, now);
+  const error = validatePeriod(from, to, now);
+  if (!error) return {};
+  if (from >= to) return { from: error };
+  if (to - from > STATEMENT_MAX_PERIOD) {
+    return { to: `Up to 31 days: end on ${formatDate(new Date(getLatestPeriodEnd(from) * 1000))} or earlier` };
+  }
+  return { to: error };
+}
 
 export default function PeriodForm(props: { period: Period; onChange: (period: Period) => void }) {
   const { period, onChange } = props;
   const navigation = useNavigation();
   const [choice, setChoice] = useState<Choice>(isPreset(period) ? period.preset : "custom");
-  const [errors, setErrors] = useState<{ from?: string; to?: string }>({});
+  // "Required" errors from submitting. Range errors are worked out on every render, so they show while editing.
+  const [errors, setErrors] = useState<Errors>({});
 
   // A custom range starts from the current period, so switching to it is a small step.
   // Computed once: the pickers are controlled, so new props on each render can't reset an entered date.
@@ -48,20 +83,14 @@ export default function PeriodForm(props: { period: Period; onChange: (period: P
       return;
     }
 
-    // The whole From and To days. A range ending today ends now, since monobank rejects future times.
     const now = new Date();
-    const from = Math.floor(startOfDay(values.from).getTime() / 1000);
-    const to = Math.floor(Math.min(endOfDay(values.to).getTime(), now.getTime()) / 1000);
-    const error = validatePeriod(from, to, now);
+    if (Object.keys(getRangeErrors(values.from, values.to, now)).length) return;
 
-    if (error) {
-      setErrors(from >= to ? { from: error } : { to: error });
-      return;
-    }
-
-    onChange({ from, to });
+    onChange(getCustomRange(values.from, values.to, now));
     navigation.pop();
   }
+
+  const rangeErrors = getRangeErrors(from, to, new Date());
 
   return (
     <Form
@@ -91,7 +120,7 @@ export default function PeriodForm(props: { period: Period; onChange: (period: P
             type={Form.DatePicker.Type.Date}
             value={from}
             max={max}
-            error={errors.from}
+            error={errors.from ?? rangeErrors.from}
             onChange={(date) => {
               setFrom(date);
               clearError();
@@ -103,7 +132,7 @@ export default function PeriodForm(props: { period: Period; onChange: (period: P
             type={Form.DatePicker.Type.Date}
             value={to}
             max={max}
-            error={errors.to}
+            error={errors.to ?? rangeErrors.to}
             onChange={(date) => {
               setTo(date);
               clearError();

@@ -99,7 +99,17 @@ export function validatePeriod(from: number, to: number, now = new Date()) {
   return undefined;
 }
 
-function formatDate(date: Date, options: { year?: boolean; weekday?: boolean } = {}) {
+/**
+ * The last day a period starting on `from`'s day can end on: 30 days later, so the whole day still fits in the
+ * 31 days monobank returns at once. Midnight of that day, in unix seconds.
+ */
+export function getLatestPeriodEnd(from: number) {
+  const date = new Date(from * 1000);
+  return toUnix(new Date(date.getFullYear(), date.getMonth(), date.getDate() + 30));
+}
+
+/** E.g. "1 Jul", "Mon 1 Jul 2026" with both options. */
+export function formatDate(date: Date, options: { year?: boolean; weekday?: boolean } = {}) {
   return date.toLocaleDateString("en-GB", {
     weekday: options.weekday ? "short" : undefined,
     day: "numeric",

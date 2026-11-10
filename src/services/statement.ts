@@ -1,15 +1,17 @@
 import { LocalStorage, getPreferenceValues } from "@raycast/api";
-import { RateLimitError, getStatement, getTokenFingerprint, requireToken } from "../api/monobank";
+import { ApiError, RateLimitError, getStatement, getTokenFingerprint, requireToken } from "../api/monobank";
 import { StatementItemResponse } from "../api/types";
 import {
   DEFAULT_STATEMENT_RETENTION_MONTHS,
+  HISTORY_SYNC_MONTHS_UNLIMITED,
+  STATEMENT_MAX_PERIOD,
   STATEMENT_PAGE_SIZE,
   STATEMENT_RATE_LIMIT,
   STORAGE_KEYS,
   getStatementKey,
 } from "../data/constants";
 import { AccountOrJar } from "../types";
-import { resolvePeriod, validatePeriod } from "../utils/statement";
+import { getLatestPeriodEnd, resolvePeriod, validatePeriod } from "../utils/statement";
 import { toUserFacingError } from "./clientInfo";
 import { toLocalIso } from "./format";
 import { readJson, writeJson } from "./storage";
@@ -42,6 +44,11 @@ export interface StoredStatement {
   covered: TimeRange[];
   /** Unix milliseconds of the last request that ended now, or 0. */
   syncedAt: number;
+  /**
+   * Unix seconds. "Sync Statements" loads history only from here on, set when monobank rejected an older range
+   * (e.g. one older than it keeps), so one account can't block the history of the others.
+   */
+  historyFrom?: number;
 }
 
 export type RequestMode = "auto" | "refresh" | "older";
@@ -110,6 +117,7 @@ export function mergeResponse(
     items: [...page, ...kept].sort((a, b) => b.time - a.time),
     covered: addRange(stored.covered, { from: isFull ? from + 1 : from, to }),
     syncedAt: request.to === undefined ? fetchedAt : stored.syncedAt,
+    ...(stored.historyFrom !== undefined && { historyFrom: stored.historyFrom }),
   };
 }
 
@@ -123,16 +131,29 @@ export function getRetentionMonths(): number | undefined {
 }
 
 /**
+ * The start of the transactions kept for `months` calendar months, counted from the start of today (`now` in unix
+ * ms), in unix seconds. Never later than the start of the last 31 days, which the commands resync.
+ */
+export function getRetentionCutoff(now: number, months: number) {
+  const date = new Date(now);
+  const cutoff = new Date(date.getFullYear(), date.getMonth() - months, date.getDate());
+  const window = resolvePeriod({ preset: "last31Days" }, date);
+  return Math.min(Math.floor(cutoff.getTime() / 1000), window.from);
+}
+
+/** How far back "Sync Statements" loads history: as far as "Keep Statements For" keeps it, or a year for Unlimited. */
+export function getHistoryCutoff(now: number) {
+  return getRetentionCutoff(now, getRetentionMonths() ?? HISTORY_SYNC_MONTHS_UNLIMITED);
+}
+
+/**
  * Drops transactions older than `months` calendar months (counted from the start of today), or keeps all without
  * `months`. The last 31 days, which the commands resync, are always kept, even when `months` is shorter.
  */
 export function prune(stored: StoredStatement, now: number, months: number | undefined): StoredStatement {
   if (months === undefined) return stored;
 
-  const date = new Date(now);
-  const cutoff = new Date(date.getFullYear(), date.getMonth() - months, date.getDate());
-  const window = resolvePeriod({ preset: "last31Days" }, date);
-  const cutoffTime = Math.min(Math.floor(cutoff.getTime() / 1000), window.from);
+  const cutoffTime = getRetentionCutoff(now, months);
 
   return {
     ...stored,
@@ -161,7 +182,10 @@ export function getPeriodItems(stored: StoredStatement, period: StatementPeriod)
  * The request `period` needs, or `undefined` when the stored statement already has it.
  *
  * - `auto`: when a period is opened. A period within the last 31 days resyncs all 31 days (the most one request
- *   covers) once the last sync is older than the rate limit. An older period fetches what's missing.
+ *   covers) once the last sync is older than the rate limit. An older period fetches what's missing, or, when it
+ *   runs until now, resyncs from its start (only the last 31 days when it's longer than one request covers).
+ *
+ * A missing part longer than one request covers is cut to its newest 31 days.
  * - `refresh`: always requests: the last 31 days, or the period itself when it's older.
  * - `older`: the newest missing part of the period.
  */
@@ -181,12 +205,43 @@ export function planRequest(
   switch (mode) {
     case "auto":
       if (isInWindow) return isStale && (isOngoing || gaps.length) ? syncWindow : undefined;
-      if (isOngoing && isStale) return { from: period.from };
-      return gaps[0];
+      if (isOngoing && isStale) {
+        // A request can't cover a longer period, so the stored history before the window answers the rest.
+        return now / 1000 - period.from > STATEMENT_MAX_PERIOD ? syncWindow : { from: period.from };
+      }
+      return gaps[0] && limitGap(gaps[0]);
     case "refresh":
       return isInWindow ? syncWindow : { from: period.from, to: period.to };
     case "older":
-      return gaps[0];
+      return gaps[0] && limitGap(gaps[0]);
+  }
+}
+
+/** The newest part of `gap` one request can cover. */
+function limitGap(gap: TimeRange): TimeRange {
+  return { from: Math.max(gap.from, gap.to - STATEMENT_MAX_PERIOD + 1), to: gap.to };
+}
+
+/**
+ * Unix seconds: the start of the stored history that runs without gaps into the last 31 days, or `undefined` when
+ * nothing before them is stored. Any period from then on can be answered, as the last 31 days take one request.
+ */
+export function getStoredSince(stored: StoredStatement, now: number): number | undefined {
+  const window = resolvePeriod({ preset: "last31Days" }, new Date(now));
+  const range = stored.covered.find((covered) => covered.from < window.from && covered.to >= window.from - 1);
+  return range?.from;
+}
+
+/** A period too long for one request, with part of it not stored. */
+export class PeriodTooLongError extends Error {
+  constructor(
+    /** Unix seconds: the latest end of a period with the same start that one request covers. */
+    readonly suggestedTo: number,
+    /** Unix seconds: see `getStoredSince`. */
+    readonly storedSince: number | undefined,
+  ) {
+    super("The period is longer than 31 days, the most monobank returns at once");
+    this.name = "PeriodTooLongError";
   }
 }
 
@@ -261,7 +316,9 @@ export interface LoadedStatement {
  * The statement of an account or jar from `period.from` to `period.to` (unix seconds; without `to`, until now).
  *
  * Uses the statement "Show Statement" stores. A period the stored statement covers is returned without a request,
- * except that one running until now is resynced once the last sync is older than 60 seconds. A request waits for
+ * except that one running until now is resynced once the last sync is older than 60 seconds. A period longer than
+ * 31 days works when the stored statement has everything before the last 31 days, and throws `PeriodTooLongError`
+ * otherwise, since a request covers at most 31 days. A request waits for
  * monobank's limit of one statement request per 60 seconds, which is shared with the commands, and is retried
  * once if monobank still answers 429.
  */
@@ -275,17 +332,26 @@ export async function loadStatement(accountId: string, period: StatementPeriod):
     throw toUserFacingError(error);
   }
 
-  const invalid = validatePeriod(from, to ?? Math.floor(Date.now() / 1000));
-  if (invalid) {
-    throw new Error(
-      `${invalid}. monobank returns at most 31 days per request: shorten the period, or split it into several calls. ` +
-        `Today is ${toLocalIso(Math.floor(Date.now() / 1000)).slice(0, 10)}.`,
-    );
-  }
+  const nowMs = Date.now();
+  const now = Math.floor(nowMs / 1000);
+  const end = to ?? now;
+  const isLong = end - from > STATEMENT_MAX_PERIOD;
+  // A long period is checked against the stored statement below, so only the other checks apply here.
+  const invalid = validatePeriod(isLong ? end - STATEMENT_MAX_PERIOD : from, end);
+  if (invalid) throw new Error(`${invalid}. Today is ${toLocalIso(now).slice(0, 10)}.`);
 
   let stored = await readStoredStatement(accountId);
   let fetchedAt = stored.syncedAt;
-  const request = planRequest(stored, period, "auto", Date.now());
+
+  if (isLong) {
+    // The last 31 days take at most one request, so everything before them must be stored.
+    const window = resolvePeriod({ preset: "last31Days" }, new Date(nowMs));
+    if (getGaps(stored.covered, from, Math.min(end, window.from - 1)).length) {
+      throw new PeriodTooLongError(getLatestPeriodEnd(from), getStoredSince(stored, nowMs));
+    }
+  }
+
+  const request = planRequest(stored, period, "auto", nowMs);
 
   if (request) {
     let page: StatementItemResponse[];
@@ -312,40 +378,135 @@ function isSyncedToday(stored: StoredStatement, now: number) {
   return stored.syncedAt >= resolvePeriod({ preset: "today" }, new Date(now)).from * 1000;
 }
 
+/** The parts of the history "Sync Statements" loads that the stored statement is missing, newest first. */
+function getHistoryGaps(stored: StoredStatement, cutoff: number) {
+  return getGaps(stored.covered, Math.max(cutoff, stored.historyFrom ?? 0), Math.floor(stored.syncedAt / 1000));
+}
+
+/** Whether the history "Sync Statements" loads is complete. A statement that was never synced has none of it. */
+function isHistoryDone(stored: StoredStatement, cutoff: number) {
+  return stored.syncedAt > 0 && !getHistoryGaps(stored, cutoff).length;
+}
+
+/** One statement request made by `syncNext`. */
+export interface SyncedRequest {
+  item: AccountOrJar;
+  /** The period asked for. */
+  requested: TimeRange;
+  /**
+   * The part of `requested` that's now stored: all of it, or less when the response hit `STATEMENT_PAGE_SIZE`.
+   * Then it starts at the oldest transaction received, and the rest is requested next time.
+   */
+  loaded: TimeRange;
+  /** How many transactions the response had. */
+  count: number;
+  /** Whether the response hit `STATEMENT_PAGE_SIZE`, so `loaded` starts later than `requested`. */
+  isCut: boolean;
+  /** Whether the account still has history to load after this request. */
+  historyLeft: boolean;
+}
+
 export interface SyncResult {
-  /** The account or jar synced by this call, if any. */
-  synced?: AccountOrJar;
+  /** What this call synced: the last 31 days of an account (`today`), a chunk of its history, or nothing. */
+  kind: "today" | "history" | "none";
+  /** The request this call made, if any. */
+  synced?: SyncedRequest;
   /** How many of `items` are synced today, including `synced`. */
   syncedToday: number;
+  /** How many of `items` have their history loaded back to the "Keep Statements For" cutoff. */
+  historyDone: number;
   total: number;
 }
 
 /**
- * Syncs the last 31 days of the first of `items` that wasn't synced today, and returns how many are synced.
- * Makes at most one request, and none once every item is synced today. The request waits for the rate limit
- * shared with the commands and the AI (see `withRateLimit`), so it can take up to about 2 minutes.
- * Token problems throw `MissingTokenError` / `InvalidTokenError` before any request.
+ * Makes at most one statement request for the first of `items` that needs one:
+ * 1. One that wasn't synced today gets its last 31 days synced.
+ * 2. Once all are synced today, one with missing history gets its newest missing part (up to 31 days) loaded,
+ *    back to `getHistoryCutoff`. An account is done once its stored statement covers all of it, so a longer
+ *    "Keep Statements For", or time offline, makes new history to load.
+ * 3. Otherwise there's nothing to do, and no request is made.
+ *
+ * The request waits for the rate limit shared with the commands and the AI (see `withRateLimit`), so it can take up
+ * to about 2 minutes. Token problems throw `MissingTokenError` / `InvalidTokenError` before any request.
  */
-export async function syncNextStatement(items: AccountOrJar[]): Promise<SyncResult> {
+export async function syncNext(items: AccountOrJar[]): Promise<SyncResult> {
   const { token } = getPreferenceValues<Preferences>();
   requireToken(token);
 
   const now = Date.now();
+  const cutoff = getHistoryCutoff(now);
   const stored = await Promise.all(items.map((item) => readStoredStatement(item.id)));
-  const synced = stored.map((statement) => isSyncedToday(statement, now));
-  const syncedToday = synced.filter(Boolean).length;
-  const index = synced.indexOf(false);
 
-  if (index === -1) return { syncedToday, total: items.length };
+  const getResult = (kind: SyncResult["kind"], synced?: SyncedRequest): SyncResult => ({
+    kind,
+    synced,
+    syncedToday: stored.filter((statement) => isSyncedToday(statement, now)).length,
+    historyDone: stored.filter((statement) => isHistoryDone(statement, cutoff)).length,
+    total: items.length,
+  });
 
-  const item = items[index];
-  const window = resolvePeriod({ preset: "last31Days" }, new Date(now));
-  // "refresh" always requests, so `request` is defined.
-  const request = planRequest(stored[index], { from: window.from }, "refresh", now) ?? { from: window.from };
-  const page = await withRateLimit(() => getStatement(token, item.id, request.from, request.to));
-  await saveResponse(item.id, request, page, Date.now());
+  const todayIndex = stored.findIndex((statement) => !isSyncedToday(statement, now));
+  if (todayIndex !== -1) {
+    const item = items[todayIndex];
+    const window = resolvePeriod({ preset: "last31Days" }, new Date(now));
+    // "refresh" always requests, so `request` is defined.
+    const request = planRequest(stored[todayIndex], { from: window.from }, "refresh", now) ?? { from: window.from };
+    const page = await withRateLimit(() => getStatement(token, item.id, request.from, request.to));
+    const fetchedAt = Date.now();
+    stored[todayIndex] = await saveResponse(item.id, request, page, fetchedAt);
+    return getResult("today", describeRequest(item, request, page, fetchedAt, stored[todayIndex], cutoff));
+  }
 
-  return { synced: item, syncedToday: syncedToday + 1, total: items.length };
+  const historyIndex = stored.findIndex((statement) => getHistoryGaps(statement, cutoff).length > 0);
+  if (historyIndex === -1) return getResult("none");
+
+  const item = items[historyIndex];
+  const gap = getHistoryGaps(stored[historyIndex], cutoff)[0];
+  const request = { from: Math.max(gap.from, gap.to - STATEMENT_MAX_PERIOD + 1), to: gap.to };
+
+  let page: StatementItemResponse[];
+  const fetchedAt = Date.now();
+  try {
+    page = await withRateLimit(() => getStatement(token, item.id, request.from, request.to));
+    stored[historyIndex] = await saveResponse(item.id, request, page, fetchedAt);
+  } catch (error) {
+    // A rejected range (e.g. older than monobank keeps) stops this account's history there, so the next runs move on.
+    // Rate limits and server errors are temporary, so the same range is retried next time.
+    if (error instanceof ApiError && !(error instanceof RateLimitError) && error.status < 500) {
+      await saveHistoryFrom(item.id, request.to + 1);
+    }
+    throw error;
+  }
+
+  return getResult("history", describeRequest(item, request, page, fetchedAt, stored[historyIndex], cutoff));
+}
+
+function describeRequest(
+  item: AccountOrJar,
+  request: StatementRequest,
+  page: StatementItemResponse[],
+  fetchedAt: number,
+  saved: StoredStatement,
+  cutoff: number,
+): SyncedRequest {
+  const requested = { from: request.from, to: request.to ?? Math.floor(fetchedAt / 1000) };
+  const isCut = page.length >= STATEMENT_PAGE_SIZE;
+  const oldest = Math.min(...page.map((transaction) => transaction.time));
+
+  return {
+    item,
+    requested,
+    loaded: { from: isCut ? oldest : requested.from, to: requested.to },
+    count: page.length,
+    isCut,
+    historyLeft: getHistoryGaps(saved, cutoff).length > 0,
+  };
+}
+
+/** Stops the history of an account at `historyFrom` (unix seconds). */
+async function saveHistoryFrom(accountId: string, historyFrom: number) {
+  const stored = await readRaw(accountId);
+  await writeJson(getStatementKey(accountId), { ...stored, historyFrom });
 }
 
 /** Sends `request` once monobank's rate limit allows it. On a 429, waits a full minute and retries once. */

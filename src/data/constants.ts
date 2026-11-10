@@ -61,6 +61,8 @@ export const STATEMENT_PAGE_SIZE = 500;
  * 3 months always keeps "Last Month". Older transactions are dropped the next time a command reads the statement.
  */
 export const DEFAULT_STATEMENT_RETENTION_MONTHS = 3;
+/** How many calendar months of history "Sync Statements" loads when "Keep Statements For" is Unlimited. */
+export const HISTORY_SYNC_MONTHS_UNLIMITED = 12;
 /**
  * How long a statement remembers the chosen account and period since they were last used (picked or opened).
  * After that, the default account opens (the first pinned one, or the first UAH card) with the default period.

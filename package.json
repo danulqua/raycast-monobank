@@ -88,7 +88,7 @@
       "name": "sync-statements",
       "title": "Sync Statements",
       "subtitle": "monobank",
-      "description": "Keeps the statements of all your accounts and jars up to date in the background, one account every 2 minutes.",
+      "description": "Keeps the statements of all your accounts and jars up to date in the background: the last 31 days are refreshed daily, and older history is loaded up to \"Keep Statements For\", one request every 2 minutes.",
       "mode": "no-view",
       "interval": "2m"
     },
@@ -224,7 +224,7 @@
       "name": "statementRetention",
       "type": "dropdown",
       "title": "Keep Statements For",
-      "description": "How long transactions stay stored on this device. Older ones are deleted the next time a statement is read. Unlimited never deletes them, so storage keeps growing.",
+      "description": "How long transactions stay stored on this device. \"Sync Statements\" loads history up to this length (a year for Unlimited). Older ones are deleted the next time a statement is read. Unlimited never deletes them, so storage keeps growing.",
       "required": false,
       "default": "3",
       "data": [

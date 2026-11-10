@@ -16,6 +16,9 @@
 - AI can answer budget questions ("how much can I still spend on cafes?") and create, change or delete budgets after you confirm. Questions about a category's income, e.g. transfers received, are answered too
 - The Summary in "Show Statement" groups spending by category name, so all hotel chains, for example, show as one "Hotels and resorts" row
 - Added the "Sync Statements" command: in the background, it syncs one account or jar every 2 minutes, skipping those already synced today, so every statement is up to date once a day without opening it
+- "Sync Statements" also loads older history in the background, 31 days at a time, back to "Keep Statements For" (a year for Unlimited), so past periods open without waiting. It stops once the history is loaded, and picks up again when "Keep Statements For" gets longer
+- AI can answer about any past period, e.g. "how much did I spend in May?", and about stored history of any length, e.g. the last 3 months. For a period longer than 31 days before the stored history, it explains monobank's limit and offers the longest period that fits
+- In "Change Period", the error for a custom range longer than 31 days shows as you pick the dates, with the latest end date that fits
 - Added a "Convert Currency" action (`⌘ O`) in "Show Currency Rates". It converts both ways, using the sell rate when you buy a currency and the buy rate when you sell it
 - Added the "Convert Currency" command: type e.g. `Convert 100 usd` or `250 eur pln` in Raycast to see the result right away, with currency symbols and Ukrainian names (`$`, `€`, `грн`, `доларів`) understood
 - "Show Currency Rates" and "Currency Rate Menu Bar" show how much each rate changed since the previous day, e.g. `↑ 0.12`. Turn on "Change in Title" to also show it in the menu bar title

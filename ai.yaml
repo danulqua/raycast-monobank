@@ -13,7 +13,8 @@ instructions: |
   ## Transactions
   - For statement questions (spending, income, deposits, transactions), call `get-transactions`. When the user names an account or jar, first call `get-accounts` and pass its `id` as `accountId`. Otherwise leave out `accountId`, and say which account was used.
   - Pass relative periods as `period`, which is computed from today's date in code: "today"/"сьогодні" → `today`, "last week"/"this week"/"за тиждень"/"за останній тиждень" → `last7Days`, "this month"/"цього місяця" → `thisMonth`, "last month"/"минулого місяця" → `lastMonth`, "last 30 days"/"за останній місяць" → `last31Days`. Use `from`/`to` only for specific dates, e.g. "since November 3" or "з 1 по 15 жовтня". The result's `period` shows the dates covered.
-  - A call covers at most 31 days; for longer periods make several calls with `from`/`to` and add up the totals.
+  - Call `get-transactions` with the dates the user asked for, whatever the length, e.g. "last 3 months"/"за останні 3 місяці" → `from` 3 months ago and no `to`. Transactions are stored as far back as the "Keep Statements For" preference, and a stored period can be any length. Any past date can be requested, not only the last 31 days.
+  - If the result has `periodTooLong`, don't give totals. Say monobank returns at most 31 days at once for periods before `storedSince`, offer the `suggested` period (e.g. "1 червня – 1 липня"), and ask whether to proceed with it or choose another end date. When they agree, call again with the suggested `from` and `to`. Never split a period into several calls.
   - Use `type: "expense"` for spending (витрати, витратив) and `type: "income"` for deposits and top-ups (поповнення, надходження, зарахування, deposited).
   - Answer totals from `totals` and `byCategory`, not by adding up `transactions`, which may be cut to `limit`. If `incomplete` is true, say the result only covers transactions since `loadedSince`.
   - `byCategory` groups by category name and has both spending (`expenses`) and `income` per category. For income from one category, e.g. "how much did I get in transfers" or "скільки я отримав переказів", use `type: "income"` with `categories: ["Money transfer"]`.
@@ -885,3 +886,135 @@ evals:
             type: expense
             period: thisMonth
       - matches: "4[\\s,.  ]?130"
+
+  - input: "@monobank Скільки я витратив з 1 червня по 30 серпня?"
+    mocks:
+      get-transactions:
+        account:
+          id: acc-black-uah
+          name: Black card UAH
+          currency: UAH
+          isDefault: true
+          usedBecauseNoneWasNamed: true
+        periodTooLong:
+          requested:
+            from: "2026-06-01T00:00"
+            to: "2026-08-30T23:59"
+          maxDays: 31
+          suggested:
+            from: "2026-06-01"
+            to: "2026-07-01"
+          storedSince: "2026-08-10"
+          note: "Transactions before `storedSince` (or all of them without it) load from monobank, at most 31 days at once. Don't give totals. Ask the user whether to use `suggested` (or another end date on or before it), and call again only after they answer. Don't split the period into several calls."
+    expected:
+      - callsTool:
+          name: get-transactions
+          arguments:
+            from: "2026-06-01"
+            to: "2026-08-30"
+      - matches: "31"
+      - matches: "липн|07"
+      - not:
+          matches: "₴|грн|UAH"
+
+  - input: "@monobank Скільки я витратив за останні 3 місяці?"
+    mocks:
+      get-transactions:
+        account:
+          id: acc-black-uah
+          name: Black card UAH
+          currency: UAH
+          isDefault: true
+          usedBecauseNoneWasNamed: true
+        period:
+          from: "2026-08-10T00:00"
+          to: "2026-11-10T12:00"
+        totals:
+          income: 0
+          expenses: 58312.7
+          net: -58312.7
+          cashback: 583.1
+          count: 214
+          holdCount: 2
+        byCategory:
+          - name: Grocery
+            nameUk: Продукти
+            group: Retail outlets
+            mccCodes: [5411]
+            expenses: 24310.5
+            income: 0
+            count: 96
+          - name: Cafe. Restaurants
+            nameUk: Кафе. Ресторани
+            group: Miscellaneous stores
+            mccCodes: [5812]
+            expenses: 14002.2
+            income: 0
+            count: 58
+        transactions:
+          - time: "2026-11-10T11:20"
+            description: Сільпо
+            amount: -412.3
+            category: Grocery
+            categoryUk: Продукти
+            mcc: 5411
+        truncated: true
+        incomplete: false
+    expected:
+      - callsTool:
+          name: get-transactions
+          arguments:
+            type: expense
+            from: "2026-08-10"
+      - matches: "58[\\s,.  ]?312"
+
+  - input: "@monobank How much did I spend in May?"
+    mocks:
+      get-transactions:
+        account:
+          id: acc-black-uah
+          name: Black card UAH
+          currency: UAH
+          isDefault: true
+          usedBecauseNoneWasNamed: true
+        period:
+          from: "2026-05-01T00:00"
+          to: "2026-05-31T23:59"
+        totals:
+          income: 0
+          expenses: 12840.3
+          net: -12840.3
+          cashback: 128.4
+          count: 41
+          holdCount: 0
+        byCategory:
+          - name: Grocery
+            nameUk: Продукти
+            group: Retail outlets
+            mccCodes: [5411]
+            expenses: 7420.1
+            income: 0
+            count: 22
+          - name: Cafe. Restaurants
+            nameUk: Кафе. Ресторани
+            group: Miscellaneous stores
+            mccCodes: [5812]
+            expenses: 5420.2
+            income: 0
+            count: 19
+        transactions:
+          - time: "2026-05-31T19:40"
+            description: Сільпо
+            amount: -640.5
+            category: Grocery
+            categoryUk: Продукти
+            mcc: 5411
+        truncated: true
+        incomplete: false
+    expected:
+      - callsTool:
+          name: get-transactions
+          arguments:
+            from: "2026-05-01"
+            to: "2026-05-31"
+      - matches: "12[\\s,.  ]?840"

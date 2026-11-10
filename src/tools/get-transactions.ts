@@ -1,7 +1,7 @@
 import { toTransaction } from "../api/mappers";
 import { loadClientInfo, resolveToolAccount } from "../services/clientInfo";
 import { getDisplayNames, parseDateTime, roundAmount, toLocalIso } from "../services/format";
-import { loadStatement } from "../services/statement";
+import { LoadedStatement, PeriodTooLongError, loadStatement } from "../services/statement";
 import { PeriodPreset, Transaction } from "../types";
 import { findSimilarCategories, resolveCategoryNames } from "../utils/mcc";
 import { resolvePeriod, summarize } from "../utils/statement";
@@ -25,7 +25,9 @@ type Input = {
   period?: PeriodPreset;
   /**
    * Start of a custom period, as an ISO 8601 local date ("2026-11-01", the start of that day) or date-time
-   * ("2026-11-01T18:00"). Only for periods `period` can't express. The period can be at most 31 days long.
+   * ("2026-11-01T18:00"). Only for periods `period` can't express. Any past date works. A period of any length works
+   * back to the stored history's start; an older one can be at most 31 days, including the start day (see
+   * `periodTooLong`). Pass the dates the user asked for, even for a long period.
    */
   from?: string;
   /**
@@ -56,13 +58,17 @@ type Input = {
 };
 
 /**
- * Get the transactions (statement) of a monobank account or jar for a period of up to 31 days, with totals
+ * Get the transactions (statement) of a monobank account or jar for a period, with totals
  * computed for the matching transactions: income, expenses, net, cashback, and spending and income by merchant
  * category (`byCategory`, grouped by category name, with the MCC codes of each). Use the totals to answer "how much did I spend/receive" questions instead of
  * adding up the listed transactions, which may be cut to `limit`.
  *
  * Amounts are in the account currency; expenses are negative in `transactions` and positive in the totals.
  * `holdCount` counts transactions the merchant's bank hasn't settled yet, whose amounts may still change.
+ * Any past period works (e.g. a month from last year). Transactions are stored as far back as the "Keep Statements
+ * For" preference, and a stored period can be any length (e.g. the last 3 months). monobank returns at most 31 days at
+ * once, so a longer period that reaches before the stored history returns `periodTooLong` instead of transactions,
+ * with a `suggested` period to offer the user. Never split a period into several calls.
  * `incomplete: true` means the period has more transactions than monobank returns in one request, and only
  * transactions since `loadedSince` are counted. When `account.usedBecauseNoneWasNamed` is true, tell the user which account
  * was used.
@@ -80,7 +86,22 @@ export default async function tool(input: Input) {
   const categories = resolveCategories(input.categories);
   const now = Math.floor(Date.now() / 1000);
   const { from, to } = getPeriod(input, now);
-  const statement = await loadStatement(account.id, { from, to });
+  const accountInfo = {
+    id: account.id,
+    name: names.get(account.id),
+    currency: account.currency.code,
+    isDefault: account.id === defaultItem?.id,
+    usedBecauseNoneWasNamed: !input.accountId,
+  };
+
+  let statement: LoadedStatement;
+  try {
+    statement = await loadStatement(account.id, { from, to });
+  } catch (error) {
+    if (!(error instanceof PeriodTooLongError)) throw error;
+    return { account: accountInfo, periodTooLong: describeTooLong(error, from, to ?? now) };
+  }
+
   const matches = statement.items
     .map((item) => toTransaction(item, account.currency))
     .filter((transaction) => matchesInput(transaction, input, categories));
@@ -90,13 +111,7 @@ export default async function tool(input: Input) {
   const limit = Math.min(Math.max(Math.floor(input.limit ?? DEFAULT_LIMIT), 1), MAX_LIMIT);
 
   return {
-    account: {
-      id: account.id,
-      name: names.get(account.id),
-      currency: account.currency.code,
-      isDefault: account.id === defaultItem?.id,
-      usedBecauseNoneWasNamed: !input.accountId,
-    },
+    account: accountInfo,
     period: { from: toLocalIso(from), to: toLocalIso(to ?? now) },
     totals: {
       income: round(summary.income),
@@ -115,6 +130,22 @@ export default async function tool(input: Input) {
     truncated: matches.length > limit,
     incomplete: statement.incomplete,
     loadedSince: statement.loadedSince !== undefined ? toLocalIso(statement.loadedSince) : undefined,
+  };
+}
+
+/** What the AI needs to offer a period monobank can return at once. */
+function describeTooLong(error: PeriodTooLongError, from: number, to: number) {
+  const toDate = (time: number) => toLocalIso(time).slice(0, 10);
+
+  return {
+    requested: { from: toLocalIso(from), to: toLocalIso(to) },
+    maxDays: 31,
+    suggested: { from: toDate(from), to: toDate(error.suggestedTo) },
+    storedSince: error.storedSince !== undefined ? toDate(error.storedSince) : undefined,
+    note:
+      "Transactions before `storedSince` (or all of them without it) load from monobank, at most 31 days at once. " +
+      "Don't give totals. Ask the user whether to use `suggested` (or another end date on or before it), and call " +
+      "again only after they answer. Don't split the period into several calls.",
   };
 }
 
