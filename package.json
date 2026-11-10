@@ -90,7 +90,7 @@
       "subtitle": "monobank",
       "description": "A monobank currency rate in the menu bar, with the other rates in its menu.",
       "mode": "menu-bar",
-      "interval": "1h",
+      "interval": "2h",
       "preferences": [
         {
           "name": "rateTitle",

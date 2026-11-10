@@ -25,18 +25,17 @@ export function getStatementKey(accountId: string) {
 
 // Monobank allows one client-info request per 60 seconds.
 export const CLIENT_INFO_TTL = MOCK_API ? MOCK_CONFIG.clientInfoTtl : 1000 * 60;
-/** "Show Currency Rates" and "Show Accounts". monobank changes its rates only a few times a day. */
+/**
+ * "Show Currency Rates", "Show Accounts" and "Currency Rate Menu Bar". monobank changes its rates only a few times
+ * a day. The menu bar refreshes every 2 hours, so its background runs always refetch, while opening its menu
+ * refetches only rates older than this.
+ */
 export const RATES_TTL = 1000 * 60 * 30;
 /**
  * AI tools and "Convert Currency" fetch only when the user asks something, so they refetch sooner and use the
  * current rate. monobank caches its rates for 5 minutes anyway.
  */
 export const FRESH_RATES_TTL = 1000 * 60 * 5;
-/**
- * "Currency Rate Menu Bar" runs every 30 minutes. A little shorter, so each run refetches instead of sometimes
- * reading a cache that is 29 minutes old.
- */
-export const MENU_BAR_RATES_TTL = 1000 * 60 * 25;
 /** How many days of rates `rateHistory` keeps, one snapshot per day. */
 export const RATE_HISTORY_DAYS = 7;
 

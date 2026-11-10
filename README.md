@@ -54,7 +54,7 @@ Choose the jar in the title by clicking another jar in the menu, or with "Show i
 
 The "Menu Bar Title" preference sets what's shown next to the icon: the percentage (default), the balance, the balance and goal, or nothing. Jars without a goal show their balance.
 
-Both menu bar commands are macOS only. The rate refreshes every 30 minutes, the jar every 10 minutes. When monobank can't be reached, they keep showing the last loaded data and say when it was loaded.
+Both menu bar commands are macOS only. The rate refreshes every 2 hours, and when you open its menu if the rates are older than 30 minutes. The jar refreshes every 10 minutes. When monobank can't be reached, they keep showing the last loaded data and say when it was loaded.
 
 ## Show Statement
 

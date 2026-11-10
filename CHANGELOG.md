@@ -16,7 +16,7 @@
 - Added the "Convert Currency" command: type e.g. `Convert 100 usd` or `250 eur pln` in Raycast to see the result right away, with currency symbols and Ukrainian names (`$`, `€`, `грн`, `доларів`) understood
 - "Show Currency Rates" and "Currency Rate Menu Bar" show how much each rate changed since the previous day, e.g. `↑ 0.12`. Turn on "Change in Title" to also show it in the menu bar title
 - Added "Copy Requisites" (`⌘ ⇧ R`) and "Copy Requisites in English" in "Show Accounts": an account's recipient, IBAN, tax ID and bank details for an invoice or a transfer. Set your full name and tax ID in the extension preferences
-- "Currency Rate Menu Bar" now refreshes every 30 minutes, and "Show Currency Rates" refetches rates older than 30 minutes instead of 24 hours
+- "Currency Rate Menu Bar" now refreshes every 2 hours and when its menu is opened, and "Show Currency Rates" refetches rates older than 30 minutes instead of 24 hours
 - Updated dependencies to the latest Raycast API
 - Adopted Raycast common shortcuts: Pin is now `⌘ .` (`Ctrl .` on Windows) and Copy IBAN is now `⌘ ⇧ C` (`Ctrl ⇧ C` on Windows)
 - Fixed a crash when searching accounts that have no card number

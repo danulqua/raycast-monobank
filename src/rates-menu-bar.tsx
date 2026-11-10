@@ -2,7 +2,7 @@ import { Clipboard, Icon, MenuBarExtra, getPreferenceValues, showHUD } from "@ra
 import { useCachedPromise } from "@raycast/utils";
 import { Fragment } from "react";
 import MenuBarFooter, { ConfigureCommandItem, relaunchCommand } from "./components/MenuBarFooter";
-import { MENU_BAR_RATES_TTL, STORAGE_KEYS } from "./data/constants";
+import { RATES_TTL, STORAGE_KEYS } from "./data/constants";
 import { shortcuts } from "./data/shortcuts";
 import { getPreviousSnapshot, toLocalDay } from "./services/rateHistory";
 import { loadRates } from "./services/rates";
@@ -28,7 +28,7 @@ import {
  */
 async function loadMenuRates() {
   const [loaded, pinnedIds, selectedId] = await Promise.all([
-    loadRates(MENU_BAR_RATES_TTL),
+    loadRates(RATES_TTL),
     readJson<string[]>(STORAGE_KEYS.pinnedRates),
     readJson<string>(STORAGE_KEYS.menuBarRate),
   ]);
