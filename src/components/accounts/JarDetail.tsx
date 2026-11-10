@@ -29,11 +29,12 @@ export default function JarDetail(props: { jar: Jar }) {
           <List.Item.Detail.Metadata.Label title="Balance" text={formatCurrency(jar.balance, jar.currency.code)} />
           <List.Item.Detail.Metadata.Separator />
 
-          <List.Item.Detail.Metadata.Label
-            title="Goal"
-            text={jar.goal ? formatCurrency(jar.goal, jar.currency.code) : "No goal"}
-          />
-          <List.Item.Detail.Metadata.Separator />
+          {!!jar.goal && (
+            <>
+              <List.Item.Detail.Metadata.Label title="Goal" text={formatCurrency(jar.goal, jar.currency.code)} />
+              <List.Item.Detail.Metadata.Separator />
+            </>
+          )}
 
           <List.Item.Detail.Metadata.Link title="Top Up Page URL" text={sendUrl} target={sendUrl} />
         </List.Item.Detail.Metadata>

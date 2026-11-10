@@ -48,10 +48,7 @@ Keeps one currency rate in the macOS menu bar, next to its flag. Click it to cop
 
 ## Jar Progress Menu Bar
 
-Keeps one jar in the macOS menu bar with a progress ring and how much of its goal is collected. Click it to copy the balance, goal or amount left, open its top-up page, or see your other jars:
-
-- **Gatherings** are jars with a goal, with their progress. monobank doesn't tell fundraisers and personal jars apart, so every jar with a goal is listed here.
-- **Jars** are jars without a goal, with their balance.
+Keeps one jar in the macOS menu bar with a progress ring and how much of its goal is collected. Click it to copy the balance, goal or amount left, open its top-up page, or see your other jars with their progress or balance: jars with a goal not reached yet first, then the ones with a reached goal, then jars without a goal, each with your pinned jars on top.
 
 Choose the jar in the title by clicking another jar in the menu, or with "Show in Menu Bar" (`⌘ ⇧ M`) on a jar in "Show Accounts". Hold `⌥` in the menu to open a jar's top-up page instead. Until you choose one, it shows your first pinned jar, else the first jar with a goal that isn't reached yet.
 

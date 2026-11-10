@@ -133,7 +133,7 @@
       "name": "jar-menu-bar",
       "title": "Jar Progress Menu Bar",
       "subtitle": "monobank",
-      "description": "A monobank jar's progress in the menu bar, with your other jars and gatherings in its menu.",
+      "description": "A monobank jar's progress in the menu bar, with your other jars in its menu.",
       "mode": "menu-bar",
       "interval": "10m",
       "preferences": [

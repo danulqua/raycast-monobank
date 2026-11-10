@@ -8,7 +8,15 @@ import TokenErrorEmptyView, { showInvalidTokenToast } from "./components/TokenEr
 import { PinProps } from "./components/PinActionsSection";
 import AccountListItem from "./components/accounts/AccountListItem";
 import JarListItem from "./components/accounts/JarListItem";
-import { calculateTotal, filterOutPinnedItems, formatCurrency, getItemTitle, isAccount, matchesSearch } from "./utils";
+import {
+  calculateTotal,
+  compareJarsByGoal,
+  filterOutPinnedItems,
+  formatCurrency,
+  getItemTitle,
+  isAccount,
+  matchesSearch,
+} from "./utils";
 
 enum Category {
   ALL = "all",
@@ -63,7 +71,8 @@ export default function Command() {
 
   const cards = accounts.filter((account) => account.type !== AccountType.FOP);
   const fops = accounts.filter((account) => account.type === AccountType.FOP);
-  const allItems: AccountOrJar[] = [...cards, ...fops, ...jars];
+  const sortedJars = [...jars].sort(compareJarsByGoal);
+  const allItems: AccountOrJar[] = [...cards, ...fops, ...sortedJars];
 
   const pinnedItems = pinned.pinnedIds
     .map((id) => allItems.find((item) => item.id === id))
@@ -144,7 +153,7 @@ export default function Command() {
         {isCategoryVisible(Category.FOP) && getUnpinnedItems(fops).map((item) => renderItem(item))}
       </List.Section>
       <List.Section title={categoryLabel[Category.JAR]}>
-        {isCategoryVisible(Category.JAR) && getUnpinnedItems(jars).map((item) => renderItem(item))}
+        {isCategoryVisible(Category.JAR) && getUnpinnedItems(sortedJars).map((item) => renderItem(item))}
       </List.Section>
     </List>
   );

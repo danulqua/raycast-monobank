@@ -74,6 +74,18 @@ export function getJarProgress(jar: Jar) {
   return jar.goal ? jar.balance / jar.goal : undefined;
 }
 
+/** 0: goal not reached yet, 1: goal reached, 2: no goal. */
+function getJarGoalGroup(jar: Jar) {
+  const progress = getJarProgress(jar);
+  if (progress === undefined) return 2;
+  return progress >= 1 ? 1 : 0;
+}
+
+/** Sorts jars with a goal not reached yet first, then the ones with a reached goal, then jars without a goal. */
+export function compareJarsByGoal(a: Jar, b: Jar) {
+  return getJarGoalGroup(a) - getJarGoalGroup(b);
+}
+
 // Hex colors, not `Color.Green`: the progress ring is an SVG, and the menu bar draws a Raycast color name in it as black.
 const progressColors = {
   light: { color: "#34C759", background: "black", backgroundOpacity: 0.15 },
@@ -98,7 +110,7 @@ export function formatJarPercentage(jar: Jar) {
 
 export function getJarAccessories(jar: Jar): List.Item.Accessory[] {
   const progress = getJarProgress(jar);
-  if (progress === undefined) return [{ text: "No goal" }];
+  if (progress === undefined) return [];
 
   const percentage = (progress * 100).toFixed(2);
   return [{ text: formatCurrency(jar.goal, jar.currency.code) }, { icon: getJarIcon(jar), tooltip: `${percentage}%` }];

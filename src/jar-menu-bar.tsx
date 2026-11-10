@@ -17,6 +17,7 @@ import { fetchClientInfo } from "./services/clientInfo";
 import { readJson, writeJson } from "./services/storage";
 import { Jar } from "./types";
 import {
+  compareJarsByGoal,
   formatCurrency,
   formatJarBalanceAndGoal,
   formatJarPercentage,
@@ -45,13 +46,16 @@ async function copy(amount: number, jar: Jar) {
   await showHUD("Copied to Clipboard");
 }
 
-/** Pinned jars first, in their pinned order, then the rest in monobank's order. */
-function sortByPinned(jars: Jar[], pinnedIds: string[]) {
+/**
+ * Jars with a goal not reached yet first, then the ones with a reached goal, then jars without a goal.
+ * Within each group, pinned jars come first, in their pinned order, then the rest in monobank's order.
+ */
+function sortJars(jars: Jar[], pinnedIds: string[]) {
   const rank = (jar: Jar) => {
     const index = pinnedIds.indexOf(jar.id);
     return index === -1 ? pinnedIds.length : index;
   };
-  return [...jars].sort((a, b) => rank(a) - rank(b));
+  return [...jars].sort((a, b) => compareJarsByGoal(a, b) || rank(a) - rank(b));
 }
 
 export default function Command() {
@@ -114,12 +118,10 @@ export default function Command() {
     );
   }
 
-  const others = sortByPinned(
+  const others = sortJars(
     jars.filter((item) => item.id !== jar.id),
     pinnedIds,
   );
-  const gatherings = others.filter((item) => item.goal);
-  const plainJars = others.filter((item) => !item.goal);
   const sendUrl = getSendUrl(jar.sendId);
 
   const renderJar = (item: Jar) => (
@@ -201,10 +203,7 @@ export default function Command() {
           />
         </MenuBarExtra.Section>
 
-        {gatherings.length > 0 && (
-          <MenuBarExtra.Section title="Gatherings">{gatherings.map(renderJar)}</MenuBarExtra.Section>
-        )}
-        {plainJars.length > 0 && <MenuBarExtra.Section title="Jars">{plainJars.map(renderJar)}</MenuBarExtra.Section>}
+        {others.length > 0 && <MenuBarExtra.Section title="Jars">{others.map(renderJar)}</MenuBarExtra.Section>}
       </Fragment>
 
       <MenuBarFooter
