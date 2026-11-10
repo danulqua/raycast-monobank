@@ -58,7 +58,7 @@ export default function SummaryListItem(props: {
                   <Metadata.Label title="Spending by Category" />
                   {summary.categories.map((category) => (
                     <Metadata.Label
-                      key={category.group}
+                      key={category.mcc}
                       title={category.name}
                       icon={category.icon}
                       text={`${formatAmount(category.amount, currency)} (${category.count})`}

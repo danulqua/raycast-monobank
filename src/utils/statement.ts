@@ -168,7 +168,7 @@ export function groupByDay(transactions: Transaction[], now = new Date()): DaySe
 }
 
 export interface CategorySpending {
-  group: string;
+  mcc: number;
   name: string;
   icon: Icon;
   /** Positive. */
@@ -186,13 +186,13 @@ export interface StatementSummary {
   count: number;
   /** Transactions on hold (not settled yet), which are included in the totals. */
   holdCount: number;
-  /** Expenses by MCC group, largest first. */
+  /** Expenses by MCC, largest first. */
   categories: CategorySpending[];
 }
 
 /** `currency` is used when there are no transactions, e.g. when a search matches none. */
 export function summarize(transactions: Transaction[], currency?: Currency): StatementSummary {
-  const categories = new Map<string, CategorySpending>();
+  const categories = new Map<number, CategorySpending>();
   let income = 0;
   let expenses = 0;
   let cashback = 0;
@@ -209,11 +209,12 @@ export function summarize(transactions: Transaction[], currency?: Currency): Sta
 
     expenses -= transaction.amount;
 
-    const { group, groupName, icon } = transaction.category;
-    const category = categories.get(group) ?? { group, name: groupName, icon, amount: 0, count: 0 };
+    const { mcc } = transaction;
+    const { name, icon } = transaction.category;
+    const category = categories.get(mcc) ?? { mcc, name, icon, amount: 0, count: 0 };
     category.amount -= transaction.amount;
     category.count++;
-    categories.set(group, category);
+    categories.set(mcc, category);
   }
 
   return {
