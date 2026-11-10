@@ -2,12 +2,13 @@ import { LocalStorage, getPreferenceValues } from "@raycast/api";
 import { RateLimitError, getStatement, getTokenFingerprint, requireToken } from "../api/monobank";
 import { StatementItemResponse } from "../api/types";
 import {
+  DEFAULT_STATEMENT_RETENTION_MONTHS,
   STATEMENT_PAGE_SIZE,
   STATEMENT_RATE_LIMIT,
-  STATEMENT_RETENTION_MONTHS,
   STORAGE_KEYS,
   getStatementKey,
 } from "../data/constants";
+import { AccountOrJar } from "../types";
 import { resolvePeriod, validatePeriod } from "../utils/statement";
 import { toUserFacingError } from "./clientInfo";
 import { toLocalIso } from "./format";
@@ -112,11 +113,26 @@ export function mergeResponse(
   };
 }
 
-/** Drops transactions older than the retention period (see `STATEMENT_RETENTION_MONTHS`). */
-export function prune(stored: StoredStatement, now: number): StoredStatement {
+/** Months of transactions to keep, from the "Keep Statements For" preference, or `undefined` to keep all. */
+export function getRetentionMonths(): number | undefined {
+  const { statementRetention } = getPreferenceValues<Preferences>();
+  if (statementRetention === "unlimited") return undefined;
+
+  const months = Number(statementRetention);
+  return Number.isInteger(months) && months > 0 ? months : DEFAULT_STATEMENT_RETENTION_MONTHS;
+}
+
+/**
+ * Drops transactions older than `months` calendar months (counted from the start of today), or keeps all without
+ * `months`. The last 31 days, which the commands resync, are always kept, even when `months` is shorter.
+ */
+export function prune(stored: StoredStatement, now: number, months: number | undefined): StoredStatement {
+  if (months === undefined) return stored;
+
   const date = new Date(now);
-  const cutoff = new Date(date.getFullYear(), date.getMonth() - STATEMENT_RETENTION_MONTHS, date.getDate());
-  const cutoffTime = Math.floor(cutoff.getTime() / 1000);
+  const cutoff = new Date(date.getFullYear(), date.getMonth() - months, date.getDate());
+  const window = resolvePeriod({ preset: "last31Days" }, date);
+  const cutoffTime = Math.min(Math.floor(cutoff.getTime() / 1000), window.from);
 
   return {
     ...stored,
@@ -205,7 +221,7 @@ export async function readStoredStatement(accountId: string): Promise<StoredStat
   if (prunedAccounts.has(accountId)) return stored;
 
   prunedAccounts.add(accountId);
-  const pruned = prune(stored, Date.now());
+  const pruned = prune(stored, Date.now(), getRetentionMonths());
   if (pruned.items.length !== stored.items.length || pruned.covered.length !== stored.covered.length) {
     await writeJson(getStatementKey(accountId), pruned);
   }
@@ -289,6 +305,47 @@ export async function loadStatement(accountId: string, period: StatementPeriod):
   const items = getPeriodItems(stored, loadedSince === undefined ? period : { from: loadedSince, to });
 
   return { items, incomplete: gaps.length > 0, loadedSince, fetchedAt };
+}
+
+/** Whether a request that ended now was saved since the start of today, by any command or the AI. */
+function isSyncedToday(stored: StoredStatement, now: number) {
+  return stored.syncedAt >= resolvePeriod({ preset: "today" }, new Date(now)).from * 1000;
+}
+
+export interface SyncResult {
+  /** The account or jar synced by this call, if any. */
+  synced?: AccountOrJar;
+  /** How many of `items` are synced today, including `synced`. */
+  syncedToday: number;
+  total: number;
+}
+
+/**
+ * Syncs the last 31 days of the first of `items` that wasn't synced today, and returns how many are synced.
+ * Makes at most one request, and none once every item is synced today. The request waits for the rate limit
+ * shared with the commands and the AI (see `withRateLimit`), so it can take up to about 2 minutes.
+ * Token problems throw `MissingTokenError` / `InvalidTokenError` before any request.
+ */
+export async function syncNextStatement(items: AccountOrJar[]): Promise<SyncResult> {
+  const { token } = getPreferenceValues<Preferences>();
+  requireToken(token);
+
+  const now = Date.now();
+  const stored = await Promise.all(items.map((item) => readStoredStatement(item.id)));
+  const synced = stored.map((statement) => isSyncedToday(statement, now));
+  const syncedToday = synced.filter(Boolean).length;
+  const index = synced.indexOf(false);
+
+  if (index === -1) return { syncedToday, total: items.length };
+
+  const item = items[index];
+  const window = resolvePeriod({ preset: "last31Days" }, new Date(now));
+  // "refresh" always requests, so `request` is defined.
+  const request = planRequest(stored[index], { from: window.from }, "refresh", now) ?? { from: window.from };
+  const page = await withRateLimit(() => getStatement(token, item.id, request.from, request.to));
+  await saveResponse(item.id, request, page, Date.now());
+
+  return { synced: item, syncedToday: syncedToday + 1, total: items.length };
 }
 
 /** Sends `request` once monobank's rate limit allows it. On a 429, waits a full minute and retries once. */

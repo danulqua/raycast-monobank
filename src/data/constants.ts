@@ -56,10 +56,11 @@ export const STATEMENT_REQUEST_DELAY = 500;
 /** The most items one statement request returns. */
 export const STATEMENT_PAGE_SIZE = 500;
 /**
- * How many calendar months of transactions the stored statement keeps (counted from the start of the same day),
- * so "Last Month" is always kept. Older transactions are dropped the next time a command reads the statement.
+ * How many calendar months of transactions the stored statement keeps (counted from the start of the same day) when
+ * the "Keep Statements For" preference has an unknown value. The preference sets retention, and its default of
+ * 3 months always keeps "Last Month". Older transactions are dropped the next time a command reads the statement.
  */
-export const STATEMENT_RETENTION_MONTHS = 3;
+export const DEFAULT_STATEMENT_RETENTION_MONTHS = 3;
 /**
  * How long a statement remembers the chosen account and period since they were last used (picked or opened).
  * After that, the default account opens (the first pinned one, or the first UAH card) with the default period.

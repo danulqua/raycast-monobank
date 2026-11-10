@@ -77,6 +77,14 @@
       "mode": "view"
     },
     {
+      "name": "sync-statements",
+      "title": "Sync Statements",
+      "subtitle": "monobank",
+      "description": "Keeps the statements of all your accounts and jars up to date in the background, one account every 2 minutes.",
+      "mode": "no-view",
+      "interval": "2m"
+    },
+    {
       "name": "rates-menu-bar",
       "title": "Currency Rate Menu Bar",
       "subtitle": "monobank",
@@ -185,9 +193,24 @@
       "name": "token",
       "type": "password",
       "title": "Access Token",
-      "description": "Your monobank Access Token. Required for the \"Show Accounts\", \"Show Statement\" and \"Jar Progress Menu Bar\" commands and for AI questions about your accounts and transactions.",
+      "description": "Your monobank Access Token. Required for the \"Show Accounts\", \"Show Statement\", \"Sync Statements\" and \"Jar Progress Menu Bar\" commands and for AI questions about your accounts and transactions.",
       "placeholder": "Enter Your Access Token",
       "required": false
+    },
+    {
+      "name": "statementRetention",
+      "type": "dropdown",
+      "title": "Keep Statements For",
+      "description": "How long transactions stay stored on this device. Older ones are deleted the next time a statement is read. Unlimited never deletes them, so storage keeps growing.",
+      "required": false,
+      "default": "3",
+      "data": [
+        { "title": "1 Month", "value": "1" },
+        { "title": "3 Months", "value": "3" },
+        { "title": "6 Months", "value": "6" },
+        { "title": "1 Year", "value": "12" },
+        { "title": "Unlimited (uses more disk space)", "value": "unlimited" }
+      ]
     },
     {
       "name": "fullName",

@@ -46,8 +46,13 @@ export function toUserFacingError(error: unknown) {
  * (which allows one request per 60 seconds). Custom account names are kept. When the request fails for
  * a reason other than the token, the cache for the same token is returned with `stale: true`.
  * Token problems throw `MissingTokenError` / `InvalidTokenError` (see `getTokenError`).
+ *
+ * `maxAge` (milliseconds) is how old the cache can be to count as fresh. Commands that run in the background
+ * pass a longer one, so they don't request the accounts on every run.
  */
-export async function fetchClientInfo(): Promise<LoadedClientInfo> {
+export async function fetchClientInfo({
+  maxAge = CLIENT_INFO_TTL,
+}: { maxAge?: number } = {}): Promise<LoadedClientInfo> {
   const { token } = getPreferenceValues<Preferences>();
   requireToken(token);
 
@@ -63,7 +68,7 @@ export async function fetchClientInfo(): Promise<LoadedClientInfo> {
     return { clientInfo, items, pinnedIds, defaultItem: getDefaultItem(items, pinnedIds), stale, updatedAt };
   };
 
-  if (sameScopeCache && Date.now() - sameScopeCache.lastUpdated <= CLIENT_INFO_TTL) {
+  if (sameScopeCache && Date.now() - sameScopeCache.lastUpdated <= maxAge) {
     return result(sameScopeCache.clientInfo, sameScopeCache.lastUpdated, false);
   }
 

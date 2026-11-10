@@ -4,7 +4,7 @@ View currency rates, all your accounts and their transactions in monobank, keep 
 
 ## Setup
 
-The access token is required for the "Show Accounts", "Show Statement" and "Jar Progress Menu Bar" commands and for AI questions about your accounts and transactions. "Show Currency Rates" and currency questions work without it. To create an access token:
+The access token is required for the "Show Accounts", "Show Statement", "Sync Statements" and "Jar Progress Menu Bar" commands and for AI questions about your accounts and transactions. "Show Currency Rates" and currency questions work without it. To create an access token:
 
 1. Visit https://api.monobank.ua/
 2. Authenticate with your account
@@ -70,6 +70,16 @@ Browse the transactions of a card, PE account or jar. Pick the account in the se
 - Export the statement to CSV in your Downloads folder, or copy it as CSV.
 
 monobank allows one statement request per 60 seconds. Statements are cached, and when a request has to wait, a countdown shows until it's sent. One request returns up to 500 transactions; use "Load Older Transactions" to get more.
+
+Statements are stored on your device for as long as the "Keep Statements For" preference says: 1 month, 3 months (the default), 6 months, 1 year or unlimited. With "Sync Statements" on, the history builds up day by day. Unlimited never deletes transactions, so it uses more disk space over time. Raising the setting doesn't bring back transactions already deleted; they load again when you open their period.
+
+## Sync Statements
+
+Keeps the statements of all your cards, PE accounts and jars up to date in the background, so "Show Statement" and AI answers have today's transactions right away, even for accounts you rarely open.
+
+monobank allows one statement request per 60 seconds, so the command runs every 2 minutes and syncs the last 31 days of one account per run: the first one not synced today, starting with the account "Show Statement" opens by default. Accounts already synced today, by this command, "Show Statement" or AI, are skipped, and once all are synced, runs make no requests until the next day. The command's subtitle in Raycast shows the progress, e.g. "Synced today: 4 of 6".
+
+Background refresh is off until you open the command once or turn it on in its preferences. Opening it syncs the next account right away.
 
 ## AI
 
