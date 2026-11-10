@@ -82,6 +82,17 @@ export const accountTypeColors: Record<AccountType, Color | string> = {
   eAid: Color.Blue,
 };
 
+/** Short names of account types, e.g. "Black" for an unnamed card in "Show Statement" ("Black *0001"). */
+export const accountTypeTitles: Record<AccountType, string> = {
+  black: "Black",
+  white: "White",
+  platinum: "Platinum",
+  iron: "Iron",
+  fop: "FOP",
+  yellow: "Yellow",
+  eAid: "eAid",
+};
+
 /** The id of the USD – UAH rate (ISO 4217 numeric codes), the default rate in the menu bar. */
 export const USD_UAH_RATE_ID = "840-980";
 

@@ -27,6 +27,7 @@ import {
   getDefaultItem,
   getFlagImage,
   getItemTitle,
+  getStatementItemTitle,
   groupByDay,
   isAccount,
   isSavedPeriod,
@@ -164,9 +165,9 @@ function AccountDropdown(props: { value: string; onChange: (id: string) => void;
             <List.Dropdown.Item
               key={item.id}
               value={item.id}
-              title={getItemTitle(item)}
+              title={getStatementItemTitle(item)}
               icon={getFlagImage(item.currency.code)}
-              keywords={[item.currency.code]}
+              keywords={isAccount(item) ? [item.currency.code, item.type, ...item.maskedPan] : [item.currency.code]}
             />
           ))}
         </List.Dropdown.Section>
@@ -211,7 +212,7 @@ function StatementList(props: {
   const days = useMemo(() => groupByDay(filtered), [filtered]);
   const summary = useMemo(() => summarize(filtered, account?.currency), [filtered, account?.currency]);
 
-  const accountTitle = account ? getItemTitle(account) : undefined;
+  const accountTitle = account ? getStatementItemTitle(account) : undefined;
   const cashbackType = account && isAccount(account) ? account.cashbackType : undefined;
   const isLoading = isLoadingAccounts || isLoadingPeriod || statement.isLoading;
 

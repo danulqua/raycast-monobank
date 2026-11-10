@@ -1,7 +1,7 @@
 import { Color, Icon, Image, List } from "@raycast/api";
 import { getProgressIcon } from "@raycast/utils";
 import { Account, AccountOrJar, AccountType, CurrencyRate, Jar } from "../types";
-import { SEND_BASE_URL, accountTypeColors } from "../data/constants";
+import { SEND_BASE_URL, accountTypeColors, accountTypeTitles } from "../data/constants";
 import { formatCurrency } from "./currency";
 import { satisfiesTexts } from "./common";
 
@@ -42,6 +42,14 @@ export function getPanOrIban(account: Account) {
 
 export function getItemTitle(item: AccountOrJar) {
   return isAccount(item) ? item.title || getPanOrIban(item) : item.title;
+}
+
+/** The title in "Show Statement": a card without a custom name shows its type and last digits, e.g. "Black *0001". */
+export function getStatementItemTitle(item: AccountOrJar) {
+  if (isAccount(item) && !item.title && item.maskedPan.length) {
+    return `${accountTypeTitles[item.type] ?? item.type} *${item.maskedPan[0].slice(-4)}`;
+  }
+  return getItemTitle(item);
 }
 
 export function getSendUrl(sendId: string) {

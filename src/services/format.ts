@@ -1,23 +1,20 @@
+import { accountTypeTitles } from "../data/constants";
 import { Account, AccountOrJar, AccountType, Currency } from "../types";
 import { getCurrencyDigits } from "../utils/currency";
 import { isAccount } from "../utils/accounts";
 
-const accountTypeNames: Record<AccountType, string> = {
-  [AccountType.BLACK]: "Black card",
-  [AccountType.WHITE]: "White card",
-  [AccountType.PLATINUM]: "Platinum card",
-  [AccountType.IRON]: "Iron card",
-  [AccountType.FOP]: "FOP account",
-  [AccountType.YELLOW]: "Yellow card",
-  [AccountType.EAID]: "eAid card",
-};
+/** E.g. "Black card" or "FOP account". */
+function getAccountTypeName(type: AccountType) {
+  const title = accountTypeTitles[type] ?? type;
+  return type === AccountType.FOP ? `${title} account` : `${title} card`;
+}
 
 /**
  * A readable name for every account and jar: the custom name, else e.g. "Black card UAH". When two
  * fallback names are equal, the last digits of the card or IBAN are added, e.g. "Black card UAH *1234".
  */
 export function getDisplayNames(items: AccountOrJar[]) {
-  const fallback = (account: Account) => `${accountTypeNames[account.type] ?? account.type} ${account.currency.code}`;
+  const fallback = (account: Account) => `${getAccountTypeName(account.type)} ${account.currency.code}`;
   const counts = new Map<string, number>();
 
   for (const item of items) {
