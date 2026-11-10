@@ -58,7 +58,7 @@ Both menu bar commands are macOS only. The rate refreshes every 30 minutes, the 
 
 ## Show Statement
 
-Browse the transactions of a card, PE account or jar. Pick the account in the search bar, or use "View Statement" (`⌘ ⇧ S`) on an account in "Show Accounts".
+Browse the transactions of a card, FOP account or jar. Pick the account in the search bar, or use "View Statement" (`⌘ ⇧ S`) on an account in "Show Accounts".
 
 - Choose a period with "Change Period…" (`⌘ ⇧ P`): today, the last 7 days, this or last month, the last 31 days, or a custom range of up to 31 days.
 - The first item summarizes the period: income, spending, cashback and spending by category.
@@ -72,7 +72,7 @@ Statements are stored on your device for as long as the "Keep Statements For" pr
 
 ## Sync Statements
 
-Keeps the statements of all your cards, PE accounts and jars up to date in the background, so "Show Statement" and AI answers have today's transactions right away, even for accounts you rarely open.
+Keeps the statements of all your cards, FOP accounts and jars up to date in the background, so "Show Statement" and AI answers have today's transactions right away, even for accounts you rarely open.
 
 monobank allows one statement request per 60 seconds, so the command runs every 2 minutes and syncs the last 31 days of one account per run: the first one not synced today, starting with the account "Show Statement" opens by default. Accounts already synced today, by this command, "Show Statement" or AI, are skipped, and once all are synced, runs make no requests until the next day. The command's subtitle in Raycast shows the progress, e.g. "Synced today: 4 of 6".
 

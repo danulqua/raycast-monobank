@@ -5,7 +5,7 @@
 - Added the "Currency Rate Menu Bar" command (macOS): a currency rate in the menu bar, with your pinned rates and all other rates in its menu. Choose the rate there, or with "Show in Menu Bar" (`⌘ ⇧ M`) in "Show Currency Rates", and choose whether the title shows the sell rate, the buy rate, both or only the flag
 - Added the "Jar Progress Menu Bar" command (macOS): a jar's progress in the menu bar, with your other jars in its menu, and links to their top-up pages. Choose the jar there, or with "Show in Menu Bar" (`⌘ ⇧ M`) in "Show Accounts", and choose whether the title shows the percentage, the balance, the balance and goal, or nothing
 - Added AI support: mention `@monobank` in AI Chat or Quick AI to ask, in English or Ukrainian, about balances, jars and their goals, top-up links, currency conversion, and spending or income by category and period. Accounts are found by their custom names, even across languages
-- Added the "Show Statement" command to browse the transactions of your cards, PE accounts and jars, with a "View Statement" action (`⌘ ⇧ S`) in "Show Accounts"
+- Added the "Show Statement" command to browse the transactions of your cards, FOP accounts and jars, with a "View Statement" action (`⌘ ⇧ S`) in "Show Accounts"
 - Choose a period (today, last 7 days, this or last month, last 31 days, or a custom range), see a summary with spending by category, and export to CSV
 - Transaction details include the merchant category, cashback, balance, comment, receipt number and counterparty, and mark transactions the merchant's bank hasn't settled yet as "Hold"
 - Requests wait for monobank's 60-second rate limit with a countdown, and statements are cached

@@ -112,7 +112,7 @@ interface DropdownSection {
   items: AccountOrJar[];
 }
 
-/** Pinned items first, in pinned order, then cards, PEs and jars without them, as in "Show Accounts". */
+/** Pinned items first, in pinned order, then cards, FOP accounts and jars without them, as in "Show Accounts". */
 function getSections(options: {
   cards: AccountOrJar[];
   fops: AccountOrJar[];
@@ -129,7 +129,7 @@ function getSections(options: {
   const sections: DropdownSection[] = [
     { title: "Pinned", items: pinnedItems },
     { title: "Cards", items: cards.filter(isUnpinned) },
-    { title: "PEs", items: fops.filter(isUnpinned) },
+    { title: "FOP Accounts", items: fops.filter(isUnpinned) },
     { title: "Jars", items: jars.filter(isUnpinned) },
   ];
   return sections.filter((section) => section.items.length > 0);

@@ -96,7 +96,7 @@ const labels: Record<RequisitesLanguage, Record<string, string>> = {
   },
   en: {
     recipient: "Beneficiary",
-    fop: "PE",
+    fop: "FOP",
     taxId: "Tax ID",
     bank: "Beneficiary bank",
     edrpou: "Bank EDRPOU",

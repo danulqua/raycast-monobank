@@ -30,7 +30,7 @@ const categoryLabel: Record<Category, string> = {
   [Category.ALL]: "All",
   [Category.PINNED]: "Pinned",
   [Category.CARD]: "Cards",
-  [Category.FOP]: "PEs",
+  [Category.FOP]: "FOP Accounts",
   [Category.JAR]: "Jars",
 };
 
