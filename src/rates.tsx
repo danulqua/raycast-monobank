@@ -21,7 +21,7 @@ const categorySections = [[Category.ALL, Category.PINNED].map((value) => ({ valu
 
 export default function Command() {
   const [category, setCategory] = useState<Category>(Category.ALL);
-  const { data: rates, isLoading: isRatesLoading, isError } = useCurrencyRates();
+  const { data: rates, previous, isLoading: isRatesLoading, isError } = useCurrencyRates();
   const pinned = usePinned<CurrencyRate>(STORAGE_KEYS.pinnedRates, getRateTitle);
 
   useEffect(() => {
@@ -50,6 +50,7 @@ export default function Command() {
             <RateListItem
               key={rate.id}
               rate={rate}
+              previous={previous}
               pin={{
                 isPinned: true,
                 onTogglePin: () => pinned.togglePin(rate),
@@ -66,6 +67,7 @@ export default function Command() {
             <RateListItem
               key={rate.id}
               rate={rate}
+              previous={previous}
               pin={{ isPinned: false, onTogglePin: () => pinned.togglePin(rate) }}
             />
           ))}

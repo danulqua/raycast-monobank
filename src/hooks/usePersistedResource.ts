@@ -54,6 +54,8 @@ export function usePersistedResource<T extends object>(options: {
 
   return {
     data: isOtherScope ? initialValue : data,
+    /** When the data was last fetched (or last attempted), in unix milliseconds. 0 before the first fetch. */
+    lastUpdated: isOtherScope ? 0 : data.lastUpdated,
     setData,
     isLoading: isFetching || isLoadingFromStorage,
     /** Whether the cached value is still being read. Stays false while refetching. */

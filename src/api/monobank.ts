@@ -1,4 +1,6 @@
 import { createHash } from "node:crypto";
+import * as mockApi from "../mocks/api";
+import { MOCK_API } from "../mocks/config";
 import { ClientInfoResponse, CurrencyRateResponse, ErrorResponse, StatementItemResponse } from "./types";
 
 const API_URL = "https://api.monobank.ua";
@@ -87,6 +89,8 @@ function normalizeToken(token: string | undefined) {
  * Returns an empty string when there is no token.
  */
 export function getTokenFingerprint(token: string | undefined) {
+  // Mock data has its own scope, so a real token's cached data is never shown with it, or the other way around.
+  if (MOCK_API) return "mock";
   const normalizedToken = normalizeToken(token);
   return normalizedToken ? createHash("sha256").update(normalizedToken).digest("hex") : "";
 }
@@ -96,6 +100,8 @@ export function getTokenFingerprint(token: string | undefined) {
  * Lets callers detect token problems before spending a rate-limited request.
  */
 export function requireToken(token: string | undefined) {
+  // The mock API needs no token, so demos work without one.
+  if (MOCK_API) return "mock";
   const normalizedToken = normalizeToken(token);
 
   if (!normalizedToken) {
@@ -111,6 +117,7 @@ export function requireToken(token: string | undefined) {
 }
 
 export async function getClientInfo(token: string | undefined) {
+  if (MOCK_API) return mockApi.getClientInfo();
   return request<ClientInfoResponse>("/personal/client-info", requireToken(token));
 }
 
@@ -120,10 +127,12 @@ export async function getClientInfo(token: string | undefined) {
  * 31 days and 1 hour long, and monobank allows one call per 60 seconds.
  */
 export async function getStatement(token: string | undefined, account: string, from: number, to?: number) {
+  if (MOCK_API) return mockApi.getStatement(account, from, to);
   const path = `/personal/statement/${encodeURIComponent(account)}/${from}${to !== undefined ? `/${to}` : ""}`;
   return request<StatementItemResponse[]>(path, requireToken(token));
 }
 
 export function getCurrencyRates() {
+  if (MOCK_API) return mockApi.getCurrencyRates();
   return request<CurrencyRateResponse[]>("/bank/currency");
 }

@@ -36,4 +36,5 @@ export const shortcuts = {
   viewStatement: cmdShift("s"),
   exportCsv: cmdShift("e"),
   showInMenuBar: cmdShift("m"),
+  copyRequisites: cmdShift("r"),
 } satisfies Record<string, Keyboard.Shortcut>;

@@ -12,6 +12,10 @@
 - The statement is stored per account and refreshed for the last 31 days whenever monobank allows, updating transactions that changed (e.g. a settled hold). Switching between periods it already covers is instant, and past periods load only once. Transactions older than 3 months are cleaned up
 - Pinned accounts from "Show Accounts" appear at the top of the account dropdown in "Show Statement". The chosen account and period are remembered for 5 minutes since they were last used; after that, the first pinned account (or the first UAH card) opens with Last 31 Days, and a different account no longer loads by mistake when the command opens. The period is remembered only for the account it was chosen on, so switching accounts resets it to Last 31 Days
 - Added a "Convert Currency" action (`⌘ O`) in "Show Currency Rates". It converts both ways, using the sell rate when you buy a currency and the buy rate when you sell it
+- Added the "Convert Currency" command: type e.g. `Convert 100 usd` or `250 eur pln` in Raycast to see the result right away, with currency symbols and Ukrainian names (`$`, `€`, `грн`, `доларів`) understood
+- "Show Currency Rates" and "Currency Rate Menu Bar" show how much each rate changed since the previous day, e.g. `↑ 0.12`. Turn on "Change in Title" to also show it in the menu bar title
+- Added "Copy Requisites" (`⌘ ⇧ R`) and "Copy Requisites in English" in "Show Accounts": an account's recipient, IBAN, tax ID and bank details for an invoice or a transfer. Set your full name and tax ID in the extension preferences
+- "Currency Rate Menu Bar" now refreshes every 30 minutes, and "Show Currency Rates" refetches rates older than 30 minutes instead of 24 hours
 - Updated dependencies to the latest Raycast API
 - Adopted Raycast common shortcuts: Pin is now `⌘ .` (`Ctrl .` on Windows) and Copy IBAN is now `⌘ ⇧ C` (`Ctrl ⇧ C` on Windows)
 - Fixed a crash when searching accounts that have no card number
@@ -19,6 +23,7 @@
 - Show a clear "Access token required" or "Invalid access token" screen with a shortcut to the preferences, and retry right after the token is fixed
 - Cached accounts are now tied to the access token that loaded them, and are no longer shown after the token is changed, removed or rejected
 - Fixed the accounts total showing NaN when an account or jar is in a currency other than UAH, USD or EUR
+- Fixed currencies with a code below 100, such as the Australian dollar, missing from the rates
 - Internal cleanup and refactoring
 
 ## [Fix] - 2025-12-02

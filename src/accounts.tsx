@@ -113,7 +113,13 @@ export default function Command() {
     };
 
     return isAccount(item) ? (
-      <AccountListItem key={item.id} account={item} onEdit={updateAccount} {...commonProps} />
+      <AccountListItem
+        key={item.id}
+        account={item}
+        ownerName={clientInfo.name}
+        onEdit={updateAccount}
+        {...commonProps}
+      />
     ) : (
       <JarListItem key={item.id} jar={item} {...commonProps} />
     );

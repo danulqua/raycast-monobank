@@ -11,3 +11,18 @@ export interface CurrencyRate {
   rateSell?: number;
   rateCross?: number;
 }
+
+/** A pair's rates on one day, as kept in the rate history. */
+export interface RateSnapshot {
+  buy?: number;
+  sell?: number;
+  cross?: number;
+}
+
+/** The rates of an earlier day, to show how much each rate changed since. */
+export interface RatesSnapshot {
+  /** Local date, "YYYY-MM-DD". */
+  day: string;
+  /** By rate id. */
+  rates: Record<string, RateSnapshot>;
+}

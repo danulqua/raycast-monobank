@@ -1,7 +1,6 @@
 import { roundAmount, toLocalIso } from "../services/format";
 import { loadRates } from "../services/rates";
-import { CurrencyRate } from "../types";
-import { getRateConversions } from "../utils/rates";
+import { convertAmount } from "../utils/rates";
 
 type Input = {
   /** The amount to convert, in the `from` currency. A positive number, e.g. 500. */
@@ -43,52 +42,27 @@ export default async function tool(input: Input) {
     return { amount, from, to, result: amount, steps: [], stale, updatedAt: new Date(updatedAt).toISOString() };
   }
 
-  const direct = findConversion(rates, from, to);
-  const steps = direct
-    ? [direct]
-    : [findConversion(rates, from, "UAH"), findConversion(rates, "UAH", to)].filter((step) => step !== undefined);
+  const converted = convertAmount(rates, amount, from, to);
+  if (!converted) throw new Error(`monobank has no rate to convert ${from} to ${to}`);
 
-  if (steps.length < (direct ? 1 : 2)) {
-    throw new Error(`monobank has no rate to convert ${from} to ${to}`);
-  }
-
-  let value = amount;
-  const usedSteps = steps.map(({ rate, conversion }) => {
-    const stepAmount = value;
-    value = conversion.convert(value);
-    return {
-      from: conversion.from.code,
-      to: conversion.to.code,
-      amount: roundAmount(stepAmount, conversion.from),
-      result: roundAmount(value, conversion.to),
-      rateType: conversion.rateType.toLowerCase(),
-      quote: `1 ${rate.currencyA.code} = ${conversion.rate} ${rate.currencyB.code}`,
-      ratesDate: toLocalIso(rate.date),
-    };
-  });
+  const { steps } = converted;
+  const usedSteps = steps.map(({ rate, conversion, amount: stepAmount, result: stepResult }) => ({
+    from: conversion.from.code,
+    to: conversion.to.code,
+    amount: roundAmount(stepAmount, conversion.from),
+    result: roundAmount(stepResult, conversion.to),
+    rateType: conversion.rateType.toLowerCase(),
+    quote: `1 ${rate.currencyA.code} = ${conversion.rate} ${rate.currencyB.code}`,
+    ratesDate: toLocalIso(rate.date),
+  }));
 
   return {
     amount,
     from,
     to,
-    result: roundAmount(value, steps[steps.length - 1].conversion.to),
+    result: roundAmount(converted.result, steps[steps.length - 1].conversion.to),
     steps: usedSteps,
     stale,
     updatedAt: new Date(updatedAt).toISOString(),
   };
-}
-
-/** The conversion from `from` to `to` on a pair that has both currencies, in either order. */
-function findConversion(rates: CurrencyRate[], from: string, to: string) {
-  for (const rate of rates) {
-    const codes = [rate.currencyA.code, rate.currencyB.code];
-    if (!codes.includes(from) || !codes.includes(to)) continue;
-
-    const conversion = getRateConversions(rate).find(
-      (conversion) => conversion.from.code === from && conversion.to.code === to,
-    );
-    if (conversion) return { rate, conversion };
-  }
-
-  return undefined;
 }

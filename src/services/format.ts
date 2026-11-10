@@ -44,7 +44,7 @@ export function roundAmount(amount: number, currency: Currency) {
   return Math.round(amount * factor) / factor;
 }
 
-const pad = (value: number) => String(value).padStart(2, "0");
+export const pad = (value: number) => String(value).padStart(2, "0");
 
 /** Local time as ISO 8601 without an offset, e.g. "2026-11-09T14:32". */
 export function toLocalIso(unixSeconds: number) {

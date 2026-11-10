@@ -43,7 +43,7 @@ export function toClientInfo(response: ClientInfoResponse, previous: ClientInfo)
     return savedAccount ? { ...account, title: savedAccount.title } : account;
   });
 
-  return { accounts, jars: response.jars?.map(toJar) ?? [] };
+  return { name: response.name, accounts, jars: response.jars?.map(toJar) ?? [] };
 }
 
 /** Whether both currencies are known to `currency-codes`, which `toCurrencyRate` requires. */

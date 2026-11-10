@@ -36,6 +36,33 @@
       "mode": "view"
     },
     {
+      "name": "convert",
+      "title": "Convert Currency",
+      "subtitle": "monobank",
+      "description": "Convert an amount at monobank's rates, e.g. Convert 100 USD.",
+      "mode": "view",
+      "arguments": [
+        {
+          "name": "amount",
+          "type": "text",
+          "placeholder": "100",
+          "required": true
+        },
+        {
+          "name": "from",
+          "type": "text",
+          "placeholder": "USD",
+          "required": false
+        },
+        {
+          "name": "to",
+          "type": "text",
+          "placeholder": "UAH",
+          "required": false
+        }
+      ]
+    },
+    {
       "name": "accounts",
       "title": "Show Accounts",
       "subtitle": "monobank",
@@ -55,7 +82,7 @@
       "subtitle": "monobank",
       "description": "A monobank currency rate in the menu bar, with the other rates in its menu.",
       "mode": "menu-bar",
-      "interval": "10m",
+      "interval": "1h",
       "preferences": [
         {
           "name": "rateTitle",
@@ -82,6 +109,15 @@
               "value": "none"
             }
           ]
+        },
+        {
+          "name": "showRateChange",
+          "title": "Change in Title",
+          "label": "Show change since yesterday",
+          "description": "Add how much the rate in the title changed since the previous day, e.g. ↑0.12. The menu always shows it.",
+          "type": "checkbox",
+          "required": false,
+          "default": false
         }
       ]
     },
@@ -151,6 +187,22 @@
       "title": "Access Token",
       "description": "Your monobank Access Token. Required for the \"Show Accounts\", \"Show Statement\" and \"Jar Progress Menu Bar\" commands and for AI questions about your accounts and transactions.",
       "placeholder": "Enter Your Access Token",
+      "required": false
+    },
+    {
+      "name": "fullName",
+      "type": "textfield",
+      "title": "Full Name for Requisites",
+      "description": "Your full name for \"Copy Requisites\" in \"Show Accounts\". Overrides the name from monobank, which has no patronymic.",
+      "placeholder": "Прізвище Ім'я По батькові",
+      "required": false
+    },
+    {
+      "name": "taxId",
+      "type": "textfield",
+      "title": "Tax ID (РНОКПП)",
+      "description": "Your tax ID for \"Copy Requisites\" in \"Show Accounts\". Left out when empty.",
+      "placeholder": "1234567890",
       "required": false
     }
   ],

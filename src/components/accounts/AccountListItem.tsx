@@ -7,13 +7,14 @@ import AccountDetail from "./AccountDetail";
 
 export default function AccountListItem(props: {
   account: Account;
+  ownerName?: string;
   isShowingDetail: boolean;
   pin: PinProps;
   onToggleDetails: () => void;
   onCopyTotal: () => void;
   onEdit: (id: string, patch: Pick<Account, "title">) => void;
 }) {
-  const { account, isShowingDetail, pin, onToggleDetails, onCopyTotal, onEdit } = props;
+  const { account, ownerName, isShowingDetail, pin, onToggleDetails, onCopyTotal, onEdit } = props;
 
   return (
     <List.Item
@@ -26,6 +27,7 @@ export default function AccountListItem(props: {
       actions={
         <AccountActions
           account={account}
+          ownerName={ownerName}
           pin={pin}
           onToggleDetails={onToggleDetails}
           onCopyTotal={onCopyTotal}

@@ -1,11 +1,12 @@
 import { List } from "@raycast/api";
-import { CurrencyRate } from "../../types";
+import { CurrencyRate, RatesSnapshot } from "../../types";
 import { getFlagImage, getRateAccessories, getRateSubtitle, getRateTitle } from "../../utils";
 import { PinProps } from "../PinActionsSection";
 import RateActions from "./RateActions";
 
-export default function RateListItem(props: { rate: CurrencyRate; pin: PinProps }) {
-  const { rate, pin } = props;
+/** `previous` is an earlier day's rates, to show how much the rate changed since. */
+export default function RateListItem(props: { rate: CurrencyRate; previous?: RatesSnapshot; pin: PinProps }) {
+  const { rate, previous, pin } = props;
 
   return (
     <List.Item
@@ -13,7 +14,7 @@ export default function RateListItem(props: { rate: CurrencyRate; pin: PinProps 
       icon={getFlagImage(rate.currencyA.code)}
       title={getRateTitle(rate)}
       subtitle={getRateSubtitle(rate)}
-      accessories={getRateAccessories(rate)}
+      accessories={getRateAccessories(rate, previous)}
       actions={<RateActions rate={rate} pin={pin} />}
     />
   );

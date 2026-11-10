@@ -11,6 +11,11 @@ The access token is required for the "Show Accounts", "Show Statement" and "Jar 
 3. Click "Activate"
 4. Copy generated access token and paste it into extension preferences
 
+In "Show Accounts", "Copy Requisites" (`⌘ ⇧ R`) copies an account's payment details for an invoice or a transfer: the recipient, IBAN, tax ID, bank name, bank EDRPOU and MFO. "Copy Requisites in English" transliterates the name and adds the bank's SWIFT. Two optional preferences fill them in:
+
+- **Full Name for Requisites**: your full name with the patronymic. Without it, the name from monobank is used, which has no patronymic.
+- **Tax ID (РНОКПП)**: left out of the requisites when empty.
+
 ## Show Currency Rates
 
 Browse monobank's currency rates. Enter copies the rate.
@@ -21,12 +26,25 @@ Use "Convert Currency" (`⌘ O`) on a rate and type an amount to see it converte
 - USD → UAH uses the buy rate (the bank buys your dollars): `amount × buy`.
 - Pairs with only a cross rate use it in both directions.
 
+Next to each rate, an arrow shows how much it changed since the previous day, e.g. `↑ 0.12` (the sell rate, or the cross rate). Hover over it to see the old and new rates. monobank has no rate history, so the extension saves the last rates it loads each day. The first change appears the day after you first open the rates or run the menu bar.
+
+## Convert Currency
+
+Type `Convert` in Raycast, then an amount and the currencies, to see the result right away:
+
+- `100 usd`: 100 USD sold for UAH and every other currency, and what 100 USD costs in UAH.
+- `250 eur pln`: 250 EUR in PLN.
+- `1000 грн`: 1000 UAH in USD, EUR and every other currency, starting with your pinned rates.
+
+The currency to convert from defaults to USD. Codes are case-insensitive, and symbols and names work too: `$`, `€`, `₴`, `zł`, `£`, `грн`, `доларів`, `євро`. Edit the search text to convert something else, e.g. `$100`, `100 usd to eur` or `1 000,50 грн`. Enter copies the result, and `⌘ ↵` pastes it. Pairs without a direct rate are converted through UAH.
+
 ## Currency Rate Menu Bar
 
 Keeps one currency rate in the macOS menu bar, next to its flag. Click it to copy the rate, or to see your pinned rates and all other rates.
 
 - Choose the rate in the title by clicking another rate in the menu, or with "Show in Menu Bar" (`⌘ ⇧ M`) on a rate in "Show Currency Rates". Until you choose one, it shows your first pinned rate, or USD – UAH.
 - The "Menu Bar Title" preference sets what's shown: the sell rate (default), the buy rate, both, or only the flag. Pairs with only a cross rate always show it.
+- The menu shows how much each rate changed since the previous day (see "Show Currency Rates"). Turn on the "Change in Title" preference to also show it in the title, e.g. `41.32 ↑0.12`.
 
 ## Jar Progress Menu Bar
 
@@ -39,7 +57,7 @@ Choose the jar in the title by clicking another jar in the menu, or with "Show i
 
 The "Menu Bar Title" preference sets what's shown next to the icon: the percentage (default), the balance, the balance and goal, or nothing. Jars without a goal show their balance.
 
-Both menu bar commands are macOS only and refresh every 10 minutes. When monobank can't be reached, they keep showing the last loaded data and say when it was loaded.
+Both menu bar commands are macOS only. The rate refreshes every 30 minutes, the jar every 10 minutes. When monobank can't be reached, they keep showing the last loaded data and say when it was loaded.
 
 ## Show Statement
 

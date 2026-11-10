@@ -2,25 +2,39 @@ import { Clipboard, Icon, MenuBarExtra, getPreferenceValues, showHUD } from "@ra
 import { useCachedPromise } from "@raycast/utils";
 import { Fragment } from "react";
 import MenuBarFooter, { ConfigureCommandItem, relaunchCommand } from "./components/MenuBarFooter";
-import { FRESH_RATES_TTL, STORAGE_KEYS } from "./data/constants";
+import { MENU_BAR_RATES_TTL, STORAGE_KEYS } from "./data/constants";
 import { shortcuts } from "./data/shortcuts";
+import { getPreviousSnapshot, toLocalDay } from "./services/rateHistory";
 import { loadRates } from "./services/rates";
 import { readJson, writeJson } from "./services/storage";
 import { CurrencyRate } from "./types";
-import { getFlagImage, getMenuBarRate, getRateMenuBarTitle, getRateSubtitle, getRateTitle } from "./utils";
+import {
+  formatChangeSince,
+  formatRateChange,
+  formatRateChangeTooltip,
+  getChangeField,
+  getFlagImage,
+  getMenuBarRate,
+  getRateChange,
+  getRateMenuBarTitle,
+  getRateSubtitle,
+  getRateTitle,
+} from "./utils";
 
 /**
- * The rates, the ones pinned in "Show Currency Rates" and the one chosen for the title, read together so they
- * are all cached. The menu then opens with the chosen rate right away, instead of the default one until the
- * choice is read.
+ * The rates, the ones pinned in "Show Currency Rates", the one chosen for the title and the previous day's rates,
+ * read together so they are all cached. The menu then opens with the chosen rate right away, instead of the
+ * default one until the choice is read.
  */
 async function loadMenuRates() {
   const [loaded, pinnedIds, selectedId] = await Promise.all([
-    loadRates(FRESH_RATES_TTL),
+    loadRates(MENU_BAR_RATES_TTL),
     readJson<string[]>(STORAGE_KEYS.pinnedRates),
     readJson<string>(STORAGE_KEYS.menuBarRate),
   ]);
-  return { ...loaded, pinnedIds: pinnedIds ?? [], selectedId: selectedId ?? "" };
+  // After `loadRates`, which saves today's snapshot when it fetches.
+  const previous = await getPreviousSnapshot(toLocalDay(loaded.updatedAt));
+  return { ...loaded, previous, pinnedIds: pinnedIds ?? [], selectedId: selectedId ?? "" };
 }
 
 async function copy(value: number) {
@@ -29,7 +43,7 @@ async function copy(value: number) {
 }
 
 export default function Command() {
-  const { rateTitle } = getPreferenceValues<Preferences.RatesMenuBar>();
+  const { rateTitle, showRateChange } = getPreferenceValues<Preferences.RatesMenuBar>();
   // Raycast unloads a menu bar command once `isLoading` is false, so the loader does all async work.
   const { data, isLoading, error, mutate } = useCachedPromise(loadMenuRates);
   const rates = data?.rates ?? [];
@@ -62,21 +76,28 @@ export default function Command() {
     .filter((item): item is CurrencyRate => !!item && item.id !== rate.id);
   const otherRates = rates.filter((item) => item.id !== rate.id && !pinnedRates.includes(item));
 
-  const renderRate = (item: CurrencyRate) => (
-    <MenuBarExtra.Item
-      key={item.id}
-      icon={getFlagImage(item.currencyA.code)}
-      title={getRateTitle(item)}
-      subtitle={getRateSubtitle(item)}
-      tooltip={`Show ${getRateTitle(item)} in the menu bar`}
-      onAction={() => select(item.id)}
-    />
-  );
+  const previous = data?.previous;
+  const getChange = (item: CurrencyRate) => getRateChange(item, previous, getChangeField(item, rateTitle));
+  const change = getChange(rate);
+
+  const renderRate = (item: CurrencyRate) => {
+    const itemChange = getChange(item);
+    return (
+      <MenuBarExtra.Item
+        key={item.id}
+        icon={getFlagImage(item.currencyA.code)}
+        title={getRateTitle(item)}
+        subtitle={getRateSubtitle(item) + (itemChange ? `  ${formatRateChange(itemChange.delta)}` : "")}
+        tooltip={`Show ${getRateTitle(item)} in the menu bar`}
+        onAction={() => select(item.id)}
+      />
+    );
+  };
 
   return (
     <MenuBarExtra
       icon={getFlagImage(rate.currencyA.code)}
-      title={getRateMenuBarTitle(rate, rateTitle)}
+      title={getRateMenuBarTitle(rate, rateTitle, showRateChange ? change : undefined)}
       tooltip={`${getRateTitle(rate)} · monobank`}
       isLoading={isLoading}
     >
@@ -114,6 +135,13 @@ export default function Command() {
                 />
               )}
             </>
+          )}
+          {change && previous && (
+            <MenuBarExtra.Item
+              title={`${formatRateChange(change.delta)} ${formatChangeSince(previous.day)}`}
+              icon={Icon.LineChart}
+              tooltip={formatRateChangeTooltip(change, previous.day)}
+            />
           )}
         </MenuBarExtra.Section>
 

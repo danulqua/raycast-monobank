@@ -1,28 +1,44 @@
 import { Color } from "@raycast/api";
+import { MOCK_API, MOCK_CONFIG } from "../mocks/config";
 import { AccountType } from "../types";
 
+/** Mock data is stored apart from real data, so turning mocks off leaves the real caches untouched. */
+const STORAGE_PREFIX = MOCK_API ? "mock:" : "";
+
 export const STORAGE_KEYS = {
-  clientInfo: "clientInfo",
-  rates: "rates",
-  pinnedAccounts: "pinnedAccounts",
-  pinnedRates: "pinnedRates",
-  statementRequestedAt: "statementRequestedAt",
-  statementPeriod: "statementPeriod",
-  statementAccount: "statementAccount",
-  menuBarRate: "menuBarRate",
-  menuBarJar: "menuBarJar",
+  clientInfo: `${STORAGE_PREFIX}clientInfo`,
+  rates: `${STORAGE_PREFIX}rates`,
+  pinnedAccounts: `${STORAGE_PREFIX}pinnedAccounts`,
+  pinnedRates: `${STORAGE_PREFIX}pinnedRates`,
+  statementRequestedAt: `${STORAGE_PREFIX}statementRequestedAt`,
+  statementPeriod: `${STORAGE_PREFIX}statementPeriod`,
+  statementAccount: `${STORAGE_PREFIX}statementAccount`,
+  menuBarRate: `${STORAGE_PREFIX}menuBarRate`,
+  menuBarJar: `${STORAGE_PREFIX}menuBarJar`,
+  rateHistory: `${STORAGE_PREFIX}rateHistory`,
 } as const;
 
 /** The stored statement of one account or jar (see `StoredStatement`). */
 export function getStatementKey(accountId: string) {
-  return `statement:${accountId}`;
+  return `${STORAGE_PREFIX}statement:${accountId}`;
 }
 
 // Monobank allows one client-info request per 60 seconds.
-export const CLIENT_INFO_TTL = 1000 * 60;
-export const RATES_TTL = 1000 * 60 * 60 * 24;
-/** AI tools and the menu bar refetch rates sooner than "Show Currency Rates", so they show current rates. */
+export const CLIENT_INFO_TTL = MOCK_API ? MOCK_CONFIG.clientInfoTtl : 1000 * 60;
+/** "Show Currency Rates" and "Show Accounts". monobank changes its rates only a few times a day. */
+export const RATES_TTL = 1000 * 60 * 30;
+/**
+ * AI tools and "Convert Currency" fetch only when the user asks something, so they refetch sooner and use the
+ * current rate. monobank caches its rates for 5 minutes anyway.
+ */
 export const FRESH_RATES_TTL = 1000 * 60 * 5;
+/**
+ * "Currency Rate Menu Bar" runs every 30 minutes. A little shorter, so each run refetches instead of sometimes
+ * reading a cache that is 29 minutes old.
+ */
+export const MENU_BAR_RATES_TTL = 1000 * 60 * 25;
+/** How many days of rates `rateHistory` keeps, one snapshot per day. */
+export const RATE_HISTORY_DAYS = 7;
 
 // Statement limits from the monobank API docs.
 /** The longest period one statement request can cover: 31 days and 1 hour, in seconds. */
@@ -31,7 +47,7 @@ export const STATEMENT_MAX_PERIOD = 2682000;
  * Monobank allows one statement request per 60 seconds. Also how long a sync stays fresh: periods that run until
  * now aren't resynced sooner.
  */
-export const STATEMENT_RATE_LIMIT = 60_000;
+export const STATEMENT_RATE_LIMIT = MOCK_API ? MOCK_CONFIG.statementRateLimit : 60_000;
 /**
  * How long a statement load waits before it uses the rate limit. A load replaced within this time
  * (e.g. by quickly switching accounts) is cancelled without sending a request.
@@ -68,3 +84,15 @@ export const accountTypeColors: Record<AccountType, Color | string> = {
 
 /** The id of the USD – UAH rate (ISO 4217 numeric codes), the default rate in the menu bar. */
 export const USD_UAH_RATE_ID = "840-980";
+
+/**
+ * Payment details of Universal Bank, which issues monobank accounts. The MFO is also read from the IBAN
+ * (see `getIbanMfo`); this one is the fallback.
+ */
+export const BANK_REQUISITES = {
+  nameUk: "АТ «Універсал Банк»",
+  nameEn: "JSC Universal Bank",
+  edrpou: "21133352",
+  mfo: "322001",
+  swift: "UNJSUAUKXXX",
+} as const;
