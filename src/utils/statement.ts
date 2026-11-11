@@ -2,6 +2,7 @@ import { Color, Icon, List } from "@raycast/api";
 import { CHECK_GOV_URL, STATEMENT_MAX_PERIOD } from "../data/constants";
 import { Currency, Period, PeriodPreset, SavedPeriod, Transaction } from "../types";
 import { formatAmount, formatPlainAmount } from "./currency";
+import { isSavings } from "./savings";
 
 export const periodPresetTitles: Record<PeriodPreset, string> = {
   today: "Today",
@@ -191,13 +192,15 @@ export interface StatementSummary {
   /** `undefined` when there are no transactions and no fallback currency was given. */
   currency?: Currency;
   income: number;
-  /** Positive. */
+  /** Positive. Doesn't include savings. */
   expenses: number;
+  /** Positive. Transfers to the user's own jars, which aren't spending. */
+  savings: number;
   cashback: number;
   count: number;
   /** Transactions on hold (not settled yet), which are included in the totals. */
   holdCount: number;
-  /** Expenses by category name, largest first. */
+  /** Expenses by category name, largest first. Savings aren't included. */
   categories: CategorySpending[];
 }
 
@@ -206,6 +209,7 @@ export function summarize(transactions: Transaction[], currency?: Currency): Sta
   const categories = new Map<string, CategorySpending>();
   let income = 0;
   let expenses = 0;
+  let savings = 0;
   let cashback = 0;
   let holdCount = 0;
 
@@ -215,6 +219,11 @@ export function summarize(transactions: Transaction[], currency?: Currency): Sta
 
     if (transaction.amount >= 0) {
       income += transaction.amount;
+      continue;
+    }
+
+    if (isSavings(transaction)) {
+      savings -= transaction.amount;
       continue;
     }
 
@@ -231,6 +240,7 @@ export function summarize(transactions: Transaction[], currency?: Currency): Sta
     currency: transactions[0]?.currency ?? currency,
     income,
     expenses,
+    savings,
     cashback,
     count: transactions.length,
     holdCount,

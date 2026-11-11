@@ -4,6 +4,7 @@ import { toClientInfo } from "../api/mappers";
 import { getClientInfo, getTokenError, getTokenFingerprint } from "../api/monobank";
 import { CLIENT_INFO_TTL, STORAGE_KEYS } from "../data/constants";
 import { Account, ClientInfo } from "../types";
+import { getJarTitles } from "../utils/savings";
 import { usePersistedResource } from "./usePersistedResource";
 
 const initialValue: { clientInfo: ClientInfo } = {
@@ -55,4 +56,10 @@ export function useClientInfo() {
     isError,
     tokenError,
   };
+}
+
+/** The user's jar titles for `toTransaction`, so transfers to them are categorized as Savings. */
+export function useJarTitles() {
+  const { data } = useClientInfo();
+  return useMemo(() => getJarTitles(data.jars), [data.jars]);
 }

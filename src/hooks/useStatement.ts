@@ -14,6 +14,7 @@ import {
 import { AccountOrJar, Period } from "../types";
 import { resolvePeriod } from "../utils/statement";
 import { CancelledError, withRateLimit } from "./rateLimit";
+import { useJarTitles } from "./useClientInfo";
 import { notifyStatementsChanged, subscribeToStatements } from "./useBudgetStatements";
 
 /**
@@ -29,6 +30,7 @@ export function useStatement(account: AccountOrJar | undefined, period: Period |
   const [isFetching, setIsFetching] = useState(false);
   const [error, setError] = useState<unknown>();
   const [waitSeconds, setWaitSeconds] = useState(0);
+  const jarTitles = useJarTitles();
   // Incremented by every load and on unmount. A load whose number is no longer current stops waiting.
   const generation = useRef(0);
   // The request of the current load, so an identical one isn't sent again while it runs.
@@ -152,8 +154,8 @@ export function useStatement(account: AccountOrJar | undefined, period: Period |
   const transactions = useMemo(() => {
     // Without a token monobank accepts, stored data can't be confirmed to belong to the user.
     if (!account || !statement || !resolvedPeriod || tokenError) return [];
-    return getPeriodItems(statement, resolvedPeriod).map((item) => toTransaction(item, account.currency));
-  }, [account, statement, resolvedPeriod, tokenError]);
+    return getPeriodItems(statement, resolvedPeriod).map((item) => toTransaction(item, account.currency, jarTitles));
+  }, [account, statement, resolvedPeriod, tokenError, jarTitles]);
 
   const hasGaps = useMemo(
     () => !!statement && !!resolvedPeriod && getPeriodGaps(statement, resolvedPeriod, Date.now()).length > 0,

@@ -76,7 +76,7 @@ export function getCategoryOptions(): CategoryOption[] {
 }
 
 /** Lowercase, single spaces and one kind of apostrophe, so "М’ясо" matches "м'ясо". */
-function normalizeCategoryText(text: string) {
+export function normalizeCategoryText(text: string) {
   return text
     .trim()
     .toLowerCase()

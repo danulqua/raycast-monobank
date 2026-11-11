@@ -1,4 +1,5 @@
 import { ActionPanel, Color, Icon, List } from "@raycast/api";
+import { roundAmount } from "../../services/format";
 import {
   BudgetMonth,
   BudgetProgress,
@@ -7,6 +8,7 @@ import {
   formatHryvnias,
   formatSpentOfLimit,
   formatSyncTime,
+  getAmountColor,
   getBudgetAlert,
   getBudgetColor,
   getBudgetIcon,
@@ -55,8 +57,12 @@ export default function SummaryListItem(props: {
   if (!currency) return null;
 
   const income = formatAmount(summary.income, currency, { signed: true });
-  const spent = formatAmount(summary.expenses, currency);
-  const net = formatAmount(summary.income - summary.expenses, currency, { signed: true });
+  // Negated only when not zero, so nothing spent shows "0" rather than "-0".
+  const spent = formatAmount(summary.expenses ? -summary.expenses : 0, currency);
+  const saved = formatAmount(summary.savings ? -summary.savings : 0, currency);
+  // Savings leave the card too, so net is how much the balance changed. Rounded, so a float leftover isn't colored.
+  const netAmount = roundAmount(summary.income - summary.expenses - summary.savings, currency);
+  const net = formatAmount(netAmount, currency, { signed: true });
   const cashback = formatAmount(summary.cashback, currency);
   const count = summary.holdCount ? `${summary.count} (${summary.holdCount} on hold)` : `${summary.count}`;
   const isSearching = searchText.length > 0;
@@ -72,7 +78,11 @@ export default function SummaryListItem(props: {
       id="summary"
       icon={{ source: Icon.PieChart, tintColor: Color.Blue }}
       title="Summary"
-      subtitle={isSearching && !summary.count ? "No matching transactions" : `Income ${income} · Spent ${spent}`}
+      subtitle={
+        isSearching && !summary.count
+          ? "No matching transactions"
+          : `Income ${income} · Spent ${spent}${summary.savings ? ` · Saved ${saved}` : ""}`
+      }
       accessories={[
         ...(budgetAlert
           ? [
@@ -93,8 +103,13 @@ export default function SummaryListItem(props: {
               <Metadata.Label key={`period:${periodLabel}`} title="Period" text={periodLabel} />
               {isSearching && <Metadata.Label key={`search:${searchText}`} title="Search" text={searchText} />}
               <Metadata.Label key={`income:${income}`} title="Income" text={{ value: income, color: Color.Green }} />
-              <Metadata.Label key={`spent:${spent}`} title="Spent" text={spent} />
-              <Metadata.Label key={`net:${net}`} title="Net" text={net} />
+              <Metadata.Label
+                key={`spent:${spent}`}
+                title="Spent"
+                text={{ value: spent, color: summary.expenses ? Color.Red : undefined }}
+              />
+              {summary.savings !== 0 && <Metadata.Label key={`saved:${saved}`} title="Saved" text={saved} />}
+              <Metadata.Label key={`net:${net}`} title="Net" text={{ value: net, color: getAmountColor(netAmount) }} />
               {summary.cashback !== 0 && (
                 <Metadata.Label key={`cashback:${cashback}`} title="Cashback" text={cashback} />
               )}

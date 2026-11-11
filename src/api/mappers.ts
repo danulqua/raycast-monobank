@@ -1,6 +1,7 @@
 import { Account, AccountType, CashbackType, ClientInfo, Currency, CurrencyRate, Jar, Transaction } from "../types";
 import { fromMinorUnits, isKnownCurrency, toCurrency, toCurrencyOrUnknown } from "../utils/currency";
 import { getCategory } from "../utils/mcc";
+import { isJarTopUp, SAVINGS_CATEGORY } from "../utils/savings";
 import { AccountResponse, ClientInfoResponse, CurrencyRateResponse, JarResponse, StatementItemResponse } from "./types";
 
 // Fields are mapped one by one, so fields the API adds later never reach domain objects or the cache.
@@ -67,8 +68,15 @@ export function toCurrencyRate(rate: CurrencyRateResponse): CurrencyRate {
   };
 }
 
-/** `currency` is the currency of the account or jar the statement belongs to. */
-export function toTransaction(item: StatementItemResponse, currency: Currency): Transaction {
+/**
+ * `currency` is the currency of the account or jar the statement belongs to. `jarTitles` (from `getJarTitles`) are
+ * the user's jars: transfers to them get the Savings category. `mcc` stays as monobank sent it.
+ */
+export function toTransaction(
+  item: StatementItemResponse,
+  currency: Currency,
+  jarTitles: readonly string[] = [],
+): Transaction {
   const operationCurrency = toCurrencyOrUnknown(item.currencyCode);
 
   return {
@@ -77,7 +85,7 @@ export function toTransaction(item: StatementItemResponse, currency: Currency): 
     description: item.description,
     mcc: item.mcc,
     originalMcc: item.originalMcc,
-    category: getCategory(item.mcc),
+    category: isJarTopUp(item, jarTitles) ? SAVINGS_CATEGORY : getCategory(item.mcc),
     hold: item.hold,
     amount: fromMinorUnits(item.amount, currency),
     currency,

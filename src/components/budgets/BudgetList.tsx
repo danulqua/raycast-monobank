@@ -17,6 +17,7 @@ import {
   getBudgetProgress,
   getCategoryOptions,
   getStatementItemTitle,
+  isSavings,
   isSyncedToday,
 } from "../../utils";
 import BudgetForm from "./BudgetForm";
@@ -315,7 +316,8 @@ function formatCategories(categories: string[]) {
 function getSpentCategories(transactions: Transaction[]) {
   const spent = new Map<string, number>();
   for (const transaction of transactions) {
-    if (transaction.amount >= 0) continue;
+    // Savings can't be budgeted, so they aren't suggested.
+    if (transaction.amount >= 0 || isSavings(transaction)) continue;
     const { name } = transaction.category;
     spent.set(name, (spent.get(name) ?? 0) - transaction.amount);
   }

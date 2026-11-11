@@ -16,6 +16,7 @@ import { Account, Period, Transaction } from "../types";
 import { getStatementItemTitle } from "../utils/accounts";
 import { resolvePeriod } from "../utils/statement";
 import { CancelledError, withRateLimit } from "./rateLimit";
+import { useJarTitles } from "./useClientInfo";
 
 /**
  * Called with an account's id after its stored statement changes, so every view showing it in the command reads it
@@ -60,6 +61,7 @@ export function useBudgetStatements(
 ) {
   const { token } = getPreferenceValues<Preferences>();
   const [stored, setStored] = useState<{ key: string; statements: Record<string, StoredStatement> }>();
+  const jarTitles = useJarTitles();
   const [isSyncing, setIsSyncing] = useState(false);
   const [error, setError] = useState<unknown>();
   // Incremented by every sync, when the accounts or period change, and on unmount. A sync whose number is no
@@ -210,13 +212,13 @@ export function useBudgetStatements(
           // Without a token monobank accepts, stored data can't be confirmed to belong to the user.
           transactions: tokenError
             ? []
-            : getPeriodItems(statement, resolvedPeriod).map((item) => toTransaction(item, account.currency)),
+            : getPeriodItems(statement, resolvedPeriod).map((item) => toTransaction(item, account.currency, jarTitles)),
           syncedAt: statement.syncedAt,
           incomplete: getPeriodGaps(statement, resolvedPeriod, now).length > 0,
         },
       ];
     });
-  }, [accounts, resolvedPeriod, statements, tokenError]);
+  }, [accounts, resolvedPeriod, statements, tokenError, jarTitles]);
 
   const oldestSyncedAt = groups.length ? Math.min(...groups.map((group) => group.syncedAt)) : undefined;
 

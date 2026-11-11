@@ -3,7 +3,8 @@ import { loadClientInfo, resolveToolAccount } from "../services/clientInfo";
 import { getDisplayNames, parseDateTime, roundAmount, toLocalIso } from "../services/format";
 import { LoadedStatement, PeriodTooLongError, loadStatement } from "../services/statement";
 import { PeriodPreset, Transaction } from "../types";
-import { findSimilarCategories, resolveCategoryNames } from "../utils/mcc";
+import { findSimilarCategories, normalizeCategoryText, resolveCategoryNames } from "../utils/mcc";
+import { getJarTitles, SAVINGS_CATEGORY } from "../utils/savings";
 import { resolvePeriod, summarize } from "../utils/statement";
 
 const DEFAULT_LIMIT = 50;
@@ -35,15 +36,17 @@ type Input = {
    */
   to?: string;
   /**
-   * "expense" for spending (outgoing money), "income" for deposits, top-ups and incoming transfers
-   * (поповнення, надходження), or "all" (the default).
+   * "expense" for outgoing money, "income" for deposits, top-ups and incoming transfers (поповнення, надходження),
+   * or "all" (the default). "expense" also returns transfers to the user's own jars (category "Savings"); for
+   * spending totals use `totals.expenses`, which leaves them out.
    */
   type?: "expense" | "income" | "all";
   /**
    * Only transactions in these categories: names from `byCategory` of an earlier result, in English or Ukrainian,
    * e.g. ["Money transfer"] or ["Кафе. Ресторани", "Fast Food"]. Matches every MCC with that name. Combined with
    * `mccCodes` (a transaction matching either is included). With `type: "income"`, `categories: ["Money transfer"]`
-   * answers "how much did I receive in transfers".
+   * answers "how much did I receive in transfers". `categories: ["Savings"]` (Заощадження) lists transfers to the
+   * user's own jars, answering "how much did I save".
    */
   categories?: string[];
   /**
@@ -59,9 +62,12 @@ type Input = {
 
 /**
  * Get the transactions (statement) of a monobank account or jar for a period, with totals
- * computed for the matching transactions: income, expenses, net, cashback, and spending and income by merchant
+ * computed for the matching transactions: income, expenses, savings, net, cashback, and spending and income by merchant
  * category (`byCategory`, grouped by category name, with the MCC codes of each). Use the totals to answer "how much did I spend/receive" questions instead of
  * adding up the listed transactions, which may be cut to `limit`.
+ *
+ * Transfers to the user's own jars are categorized "Savings" (Заощадження) and counted in `totals.savings`, not in
+ * `totals.expenses`: they're saved, not spent. `net` is income − expenses − savings, how much the balance changed.
  *
  * Amounts are in the account currency; expenses are negative in `transactions` and positive in the totals.
  * `holdCount` counts transactions the merchant's bank hasn't settled yet, whose amounts may still change.
@@ -102,8 +108,9 @@ export default async function tool(input: Input) {
     return { account: accountInfo, periodTooLong: describeTooLong(error, from, to ?? now) };
   }
 
+  const jarTitles = getJarTitles(loaded.clientInfo.jars);
   const matches = statement.items
-    .map((item) => toTransaction(item, account.currency))
+    .map((item) => toTransaction(item, account.currency, jarTitles))
     .filter((transaction) => matchesInput(transaction, input, categories));
 
   const summary = summarize(matches);
@@ -116,7 +123,8 @@ export default async function tool(input: Input) {
     totals: {
       income: round(summary.income),
       expenses: round(summary.expenses),
-      net: round(summary.income - summary.expenses),
+      savings: round(summary.savings),
+      net: round(summary.income - summary.expenses - summary.savings),
       cashback: round(summary.cashback),
       count: summary.count,
       holdCount: summary.holdCount,
@@ -173,6 +181,15 @@ function resolveCategories(texts: string[] | undefined) {
   const names = new Set<string>();
 
   for (const text of texts ?? []) {
+    const query = normalizeCategoryText(text);
+    if (
+      query === normalizeCategoryText(SAVINGS_CATEGORY.name) ||
+      query === normalizeCategoryText(SAVINGS_CATEGORY.nameUk)
+    ) {
+      names.add(SAVINGS_CATEGORY.name);
+      continue;
+    }
+
     const resolved = resolveCategoryNames(text);
     if (!resolved.length) {
       const similar = findSimilarCategories(text);

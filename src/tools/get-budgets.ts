@@ -7,6 +7,7 @@ import { getDisplayNames, roundAmount, toLocalIso } from "../services/format";
 import { LoadedStatement, loadStatement } from "../services/statement";
 import { Account } from "../types";
 import { getBudgetMonth, getBudgetProgress, isBudgetEligible, resolveBudgetAccounts } from "../utils/budgets";
+import { getJarTitles } from "../utils/savings";
 import { resolvePeriod } from "../utils/statement";
 
 type Input = {
@@ -89,9 +90,11 @@ export default async function tool(input: Input) {
     });
   }
 
+  // Transfers to jars become Savings, so they don't count toward a budget with "Money transfer".
+  const jarTitles = getJarTitles(loaded.clientInfo.jars);
   const groups = statements.map(({ account, statement }) => ({
     accountId: account.id,
-    transactions: statement.items.map((item) => toTransaction(item, account.currency)),
+    transactions: statement.items.map((item) => toTransaction(item, account.currency, jarTitles)),
   }));
   const round = (amount: number) => roundAmount(amount, accounts[0].currency);
   const now = Math.floor(Date.now() / 1000);
