@@ -308,7 +308,7 @@ function getAccessories(
     if (subscription.newPriceChargeId && subscription.previousAmount !== undefined) {
       accessories.push({
         tag: { value: "New Price?", color: Color.Orange },
-        tooltip: `${getPriceChangeQuestion(subscription)} Confirm it in the actions (⌘ K).`,
+        tooltip: `${getPriceChangeQuestion(subscription)} Confirm it in the actions.`,
       });
     } else if (subscription.confidence === "likely") {
       accessories.push({
