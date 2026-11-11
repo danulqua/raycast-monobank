@@ -41,4 +41,5 @@ export const shortcuts = {
   copyRequisites: cmdShift("r"),
   manageBudgets: cmdShift("u"),
   chooseAccounts: cmdShift("o"),
+  showHidden: cmdShift("h"),
 } satisfies Record<string, Keyboard.Shortcut>;

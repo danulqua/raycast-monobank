@@ -139,6 +139,20 @@ function getJarTopUp(jarId: string, date: Date, range: [number, number]) {
   return createRandom(`jarTopUp:${jarId}:${date.toDateString()}`).amount(range[0], range[1], 0);
 }
 
+/**
+ * The 1st of the month `months` before the current one. Schedules that show a state relative to today (a price
+ * change, a cancelled subscription) use it, so "Show Subscriptions" shows them on any day.
+ */
+function startOfMonthAgo(months: number) {
+  const now = new Date();
+  return new Date(now.getFullYear(), now.getMonth() - months, 1);
+}
+
+/** A bill that changes every month, so it isn't a subscription. Seeded by the bill and the day. */
+function getBill(name: string, date: Date, range: [number, number]) {
+  return createRandom(`bill:${name}:${date.toDateString()}`).amount(range[0], range[1], 2);
+}
+
 const VACATION_TOP_UP: [number, number] = [400, 800];
 const LAPTOP_TOP_UP: [number, number] = [300, 700];
 const WHITE_TOP_UP = 12_000;
@@ -229,6 +243,19 @@ const black: Profile = {
     if (day === 3) ops.push({ description: "Kyivstar", mcc: 4814, amount: -250, card: true, at: 9 * HOUR });
     if (day === 20)
       ops.push({ description: "Київстар Домашній інтернет", mcc: 4814, amount: -300, card: true, at: 9 * HOUR });
+    // Subscriptions for "Show Subscriptions": two plans of one merchant, and one in USD on this UAH card.
+    if (day === 9)
+      ops.push({ description: "ChatGPT", mcc: 5734, amount: -20, currency: USD, card: true, at: 4 * HOUR });
+    if (day === 14) {
+      ops.push({ description: "Apple.com/bill", mcc: 5818, amount: -2.99, currency: USD, card: true, at: 5 * HOUR });
+    }
+    if (day === 22) {
+      ops.push({ description: "Apple.com/bill", mcc: 5818, amount: -9.99, currency: USD, card: true, at: 5 * HOUR });
+    }
+    // Stops before its last expected charge (the 5th, plus 5 days of grace), so it shows as Possibly Cancelled.
+    if (day === 5 && date < startOfMonthAgo(new Date().getDate() > 10 ? 0 : 1)) {
+      ops.push({ description: "MEGOGO", mcc: 4899, amount: -199, card: true, at: 8 * HOUR });
+    }
     if (date.getDay() === 0) {
       const vacation = getJarTopUp(MOCK_IDS.jarVacation, date, VACATION_TOP_UP);
       const laptop = getJarTopUp(MOCK_IDS.jarLaptop, date, LAPTOP_TOP_UP);
@@ -258,10 +285,20 @@ const white: Profile = {
     if (day === 2 || day === 16) {
       ops.push({ description: "З чорної картки", mcc: 4829, amount: WHITE_TOP_UP, at: 11 * HOUR });
     }
+    // Two subscriptions at the same price through Apple (e.g. iCloud and Telegram), told apart by their day.
+    if (day === 12 || day === 21) {
+      ops.push({ description: "Apple", mcc: 5818, amount: -2.99, currency: USD, card: true, at: 12 * HOUR + 21 * 60 });
+    }
+    // A new price charged once, on the last 13th: "Show Subscriptions" asks whether it's the new price.
+    if (day === 13) {
+      const priceChange = startOfMonthAgo(new Date().getDate() > 13 ? 0 : 1);
+      const amount = date < priceChange ? -149 : -299;
+      ops.push({ description: "YouTube", mcc: 5815, amount, card: true, at: 11 * HOUR + 14 * 60 });
+    }
     if (day === 10) {
-      ops.push({ description: "Київводоканал", mcc: 4900, amount: -420, at: 12 * HOUR });
-      ops.push({ description: "YASNO", mcc: 4900, amount: -1350, at: 12 * HOUR + 120 });
-      ops.push({ description: "Нафтогаз", mcc: 4900, amount: -380, at: 12 * HOUR + 240 });
+      ops.push({ description: "Київводоканал", mcc: 4900, amount: -getBill("water", date, [340, 520]), at: 12 * HOUR });
+      ops.push({ description: "YASNO", mcc: 4900, amount: -getBill("power", date, [900, 1800]), at: 12 * HOUR + 120 });
+      ops.push({ description: "Нафтогаз", mcc: 4900, amount: -getBill("gas", date, [200, 650]), at: 12 * HOUR + 240 });
     }
     return ops;
   },
@@ -283,7 +320,12 @@ const platinum: Profile = {
   scheduled: (date) => {
     const ops: Op[] = [];
     const day = date.getDate();
-    if (day === 7) ops.push({ description: "Netflix", mcc: 5815, amount: -15.49, card: true, at: 6 * HOUR });
+    if (day === 7) {
+      // A price change one charge before the last two, so the default 3 months of history show "was $15.49".
+      const priceChange = startOfMonthAgo(new Date().getDate() > 7 ? 1 : 2);
+      const amount = date < priceChange ? -15.49 : -17.99;
+      ops.push({ description: "Netflix", mcc: 5815, amount, card: true, at: 6 * HOUR });
+    }
     if (day === 12)
       ops.push({ description: "Spotify", mcc: 5815, amount: -10.99, currency: EUR, card: true, at: 6 * HOUR });
     if (day === 20) ops.push({ description: "Купівля валюти", mcc: 4829, amount: 600, at: 13 * HOUR });

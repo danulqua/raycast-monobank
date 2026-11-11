@@ -64,6 +64,7 @@ export default function SummaryListItem(props: {
   const netAmount = roundAmount(summary.income - summary.expenses - summary.savings, currency);
   const net = formatAmount(netAmount, currency, { signed: true });
   const cashback = formatAmount(summary.cashback, currency);
+  const subscriptions = `${formatAmount(summary.subscriptions.amount, currency)} (${summary.subscriptions.count})`;
   const count = summary.holdCount ? `${summary.count} (${summary.holdCount} on hold)` : `${summary.count}`;
   const isSearching = searchText.length > 0;
   const budgetAlert = getBudgetAlert(budgetProgress);
@@ -108,6 +109,15 @@ export default function SummaryListItem(props: {
                 title="Spent"
                 text={{ value: spent, color: summary.expenses ? Color.Red : undefined }}
               />
+              {summary.subscriptions.count > 0 && (
+                // Part of Spent: charges with the Subscription tag.
+                <Metadata.Label
+                  key={`subscriptions:${subscriptions}`}
+                  title="Subscriptions"
+                  icon={Icon.Repeat}
+                  text={subscriptions}
+                />
+              )}
               {summary.savings !== 0 && <Metadata.Label key={`saved:${saved}`} title="Saved" text={saved} />}
               <Metadata.Label key={`net:${net}`} title="Net" text={{ value: net, color: getAmountColor(netAmount) }} />
               {summary.cashback !== 0 && (

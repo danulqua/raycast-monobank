@@ -15,7 +15,7 @@ import { AccountOrJar, Period } from "../types";
 import { resolvePeriod } from "../utils/statement";
 import { CancelledError, withRateLimit } from "./rateLimit";
 import { useJarTitles } from "./useClientInfo";
-import { notifyStatementsChanged, subscribeToStatements } from "./useBudgetStatements";
+import { notifyStatementsChanged, subscribeToStatements } from "./useAccountStatements";
 
 /**
  * The statement of `account` for `period`. Nothing is loaded while either is `undefined`.

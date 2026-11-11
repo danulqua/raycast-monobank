@@ -40,6 +40,14 @@ instructions: |
   - To create or change a budget ("встанови бюджет", "set a budget", "зміни ліміт"), call `set-budget`; to remove one, call `delete-budget`. The user confirms in Raycast before anything is saved. Prefer a `preset` when one fits the category, else `mccCodes` from the table in Transactions, or `categories`. Limits are in UAH. To change an existing budget, pass its exact name from `get-budgets`.
   - When `get-budgets` returns no budgets, say so and suggest creating one (mention a few `presets`) with you or in the "Show Budgets" command.
 
+  ## Subscriptions
+  - For subscriptions and other recurring charges (підписки, регулярні списання, регулярні платежі, "what subscriptions do I have", "what's charging me next week", "коли наступне списання за…", "how much do I pay for subscriptions", "скільки я плачу за підписки"), call `get-subscriptions`. It reads the stored statements of every card and FOP account, so it answers at once.
+  - Subscriptions are found in the stored history: weekly, monthly or quarterly charges of one merchant at about the same amount. Say so briefly. When `note` says the history is short, mention `historyFrom` and that some subscriptions may be missing.
+  - Give each subscription's `amount` with its `currency` and `nextExpected` as a date (e.g. "9 грудня" or "December 9"), relative to `today` when it's close ("tomorrow", "за 3 дні"). For "next week", list the active ones with `nextExpected` within 7 days of `today`. Mention the card (`account`) when the user has subscriptions on several cards, and `previousAmount` when the price changed. When `newPriceUnconfirmed` is true, say the price seems to have changed from `previousAmount` to `amount` on `priceChangedOn`, based on one charge so far, and that the user can confirm it in "Show Subscriptions".
+  - For a total, use `monthlyTotalUah` (active subscriptions per month in UAH at monobank's rates) and say it's approximate. Don't add up amounts in different currencies yourself.
+  - Subscriptions with `status: "possiblyCancelled"` missed their expected charge: list them separately as possibly cancelled, not as active, and leave them out of totals. `confidence: "likely"` means only two charges so far; mention it when relevant.
+  - When the list is empty, say no recurring charges were found in the stored history, and suggest running "Sync Statements" when `note` says there's no history.
+
   ## Currencies
   - Use ISO 4217 letter codes: гривня/гривні → UAH, долар → USD, євро → EUR, злотий → PLN, фунт → GBP, франк → CHF, крона → CZK.
   - "How much is X UAH in USD" or "Скільки X гривень в доларах" means how many USD you get for X UAH: call `convert-currency` with `from: "UAH"`, `to: "USD"`. Give the result and the rate used.
@@ -1044,3 +1052,179 @@ evals:
             from: "2026-05-01"
             to: "2026-05-31"
       - matches: "12[\\s,.  ]?840"
+
+  - input: "@monobank What subscriptions do I have?"
+    mocks:
+      get-subscriptions:
+        subscriptions:
+          - name: Spotify
+            account: Platinum card USD
+            cadence: monthly
+            amount: 10.99
+            currency: EUR
+            accountAmount: 11.82
+            accountCurrency: USD
+            lastCharge: "2026-10-12T06:00"
+            nextExpected: "2026-11-12"
+            status: active
+            confidence: confirmed
+            monthlyCost: 10.99
+            category: Digital Goods – Media
+          - name: Netflix
+            account: Platinum card USD
+            cadence: monthly
+            amount: 17.99
+            currency: USD
+            accountAmount: 17.99
+            accountCurrency: USD
+            previousAmount: 15.49
+            lastCharge: "2026-11-07T06:00"
+            nextExpected: "2026-12-07"
+            status: active
+            confidence: likely
+            monthlyCost: 17.99
+            category: Digital Goods – Media
+          - name: ChatGPT
+            account: Black card UAH
+            cadence: monthly
+            amount: 20
+            currency: USD
+            accountAmount: 836.4
+            accountCurrency: UAH
+            lastCharge: "2026-11-09T04:00"
+            nextExpected: "2026-12-09"
+            status: active
+            confidence: confirmed
+            monthlyCost: 20
+            category: Computer software stores
+          - name: MEGOGO
+            account: Black card UAH
+            cadence: monthly
+            amount: 199
+            currency: UAH
+            accountAmount: 199
+            accountCurrency: UAH
+            lastCharge: "2026-10-05T08:00"
+            nextExpected: "2026-11-05"
+            status: possiblyCancelled
+            confidence: likely
+            monthlyCost: 199
+            category: Cable and other pay television services
+        monthlyTotalUah: 2534.7
+        accounts:
+          - name: Black card UAH
+            historyFrom: "2026-08-11"
+            updatedAt: "2026-11-11T09:00"
+          - name: Platinum card USD
+            historyFrom: "2026-08-11"
+            updatedAt: "2026-11-11T09:02"
+        today: "2026-11-11"
+        updatedAt: "2026-11-11T09:00"
+    expected:
+      - callsTool: get-subscriptions
+      - includes: "Netflix"
+      - includes: "ChatGPT"
+      - includes: "MEGOGO"
+
+  - input: "@monobank Коли наступне списання за Netflix?"
+    mocks:
+      get-subscriptions:
+        subscriptions:
+          - name: Netflix
+            account: Platinum card USD
+            cadence: monthly
+            amount: 17.99
+            currency: USD
+            accountAmount: 17.99
+            accountCurrency: USD
+            previousAmount: 15.49
+            lastCharge: "2026-11-07T06:00"
+            nextExpected: "2026-12-07"
+            status: active
+            confidence: confirmed
+            monthlyCost: 17.99
+            category: Digital Goods – Media
+          - name: Kyivstar
+            account: Black card UAH
+            cadence: monthly
+            amount: 250
+            currency: UAH
+            accountAmount: 250
+            accountCurrency: UAH
+            lastCharge: "2026-11-03T09:00"
+            nextExpected: "2026-12-03"
+            status: active
+            confidence: confirmed
+            monthlyCost: 250
+            category: Telecommunication services
+        monthlyTotalUah: 1008.1
+        accounts:
+          - name: Black card UAH
+            historyFrom: "2026-05-11"
+            updatedAt: "2026-11-11T09:00"
+          - name: Platinum card USD
+            historyFrom: "2026-05-11"
+            updatedAt: "2026-11-11T09:02"
+        today: "2026-11-11"
+        updatedAt: "2026-11-11T09:00"
+    expected:
+      - callsTool: get-subscriptions
+      - matches: "7[\\s ]*груд|07\\.12"
+      - matches: "17[.,]99"
+
+  - input: "@monobank How much do I pay for subscriptions per month?"
+    mocks:
+      get-subscriptions:
+        subscriptions:
+          - name: Kyivstar
+            account: Black card UAH
+            cadence: monthly
+            amount: 250
+            currency: UAH
+            accountAmount: 250
+            accountCurrency: UAH
+            lastCharge: "2026-11-03T09:00"
+            nextExpected: "2026-12-03"
+            status: active
+            confidence: confirmed
+            monthlyCost: 250
+            category: Telecommunication services
+          - name: Apple.com/bill
+            account: Black card UAH
+            cadence: monthly
+            amount: 9.99
+            currency: USD
+            accountAmount: 417.78
+            accountCurrency: UAH
+            lastCharge: "2026-10-22T05:00"
+            nextExpected: "2026-11-22"
+            status: active
+            confidence: confirmed
+            monthlyCost: 9.99
+            category: Digital Goods – Applications
+          - name: Spotify
+            account: Platinum card USD
+            cadence: monthly
+            amount: 10.99
+            currency: EUR
+            accountAmount: 11.82
+            accountCurrency: USD
+            lastCharge: "2026-10-12T06:00"
+            nextExpected: "2026-11-12"
+            status: active
+            confidence: confirmed
+            monthlyCost: 10.99
+            category: Digital Goods – Media
+        monthlyTotalUah: 1186.3
+        accounts:
+          - name: Black card UAH
+            historyFrom: "2026-08-11"
+            updatedAt: "2026-11-11T09:00"
+          - name: Platinum card USD
+            historyFrom: "2026-08-11"
+            updatedAt: "2026-11-11T09:02"
+        today: "2026-11-11"
+        updatedAt: "2026-11-11T09:00"
+    expected:
+      - callsTool: get-subscriptions
+      - matches: "1[\\s,.  ]?186"

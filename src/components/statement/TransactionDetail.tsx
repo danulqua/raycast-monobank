@@ -1,11 +1,16 @@
-import { List } from "@raycast/api";
-import { CashbackType, Transaction } from "../../types";
-import { formatAmount, formatDateTime, getAmountColor, getCategory } from "../../utils";
+import { Icon, List } from "@raycast/api";
+import { CashbackType, Subscription, Transaction } from "../../types";
+import { formatAmount, formatDateTime, formatSubscriptionSummary, getAmountColor, getCategory } from "../../utils";
 
 const { Metadata } = List.Item.Detail;
 
-export default function TransactionDetail(props: { transaction: Transaction; cashbackType?: CashbackType }) {
-  const { transaction: t, cashbackType } = props;
+export default function TransactionDetail(props: {
+  transaction: Transaction;
+  cashbackType?: CashbackType;
+  /** The subscription the transaction is a charge of. Hidden ones aren't shown. */
+  subscription?: Subscription;
+}) {
+  const { transaction: t, cashbackType, subscription } = props;
   const isForeign = t.operationCurrency.code !== t.currency.code;
   const originalCategory = t.originalMcc !== t.mcc ? getCategory(t.originalMcc) : undefined;
   const cashback =
@@ -44,6 +49,15 @@ export default function TransactionDetail(props: { transaction: Transaction; cas
           <Metadata.Label title="MCC" text={String(t.mcc)} />
           {originalCategory && (
             <Metadata.Label title="Original MCC" text={`${t.originalMcc} · ${originalCategory.name}`} />
+          )}
+          {subscription && !subscription.hidden && (
+            // Keyed by the text, so Raycast recreates the label when it changes instead of truncating it.
+            <Metadata.Label
+              key={`subscription:${formatSubscriptionSummary(subscription)}`}
+              title="Subscription"
+              icon={Icon.Repeat}
+              text={formatSubscriptionSummary(subscription)}
+            />
           )}
 
           {t.comment && (

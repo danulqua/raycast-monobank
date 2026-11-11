@@ -2,7 +2,7 @@ import { Action, ActionPanel, Alert, Color, Icon, List, Toast, confirmAlert, sho
 import { ReactNode, useMemo, useState } from "react";
 import { budgetPresets } from "../../data/budgetPresets";
 import { shortcuts } from "../../data/shortcuts";
-import { BudgetStatementGroup, useBudgets } from "../../hooks";
+import { AccountStatementGroup, useBudgets } from "../../hooks";
 import { Account, Budget, Transaction } from "../../types";
 import {
   BudgetMonth,
@@ -32,7 +32,7 @@ export default function BudgetList(props: {
   /** The accounts budgets count. */
   accounts: Account[];
   /** Every loaded transaction of the month per budget account, not only the ones a search matched. */
-  groups: BudgetStatementGroup[];
+  groups: AccountStatementGroup[];
   month?: BudgetMonth;
   isLoading?: boolean;
   /** Whether the month has older transactions that aren't loaded. */
@@ -211,7 +211,7 @@ function BudgetDetail(props: {
   budget: Budget;
   progress?: BudgetProgress;
   month?: BudgetMonth;
-  groups: BudgetStatementGroup[];
+  groups: AccountStatementGroup[];
 }) {
   const { budget, progress, month, groups } = props;
   const options = getCategoryOptions();

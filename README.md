@@ -1,10 +1,10 @@
 # monobank
 
-View currency rates, all your accounts and their transactions in monobank, set monthly budgets per category, keep a rate or a jar in the menu bar, and ask AI about them.
+View currency rates, all your accounts and their transactions in monobank, set monthly budgets per category, see your subscriptions, keep a rate or a jar in the menu bar, and ask AI about them.
 
 ## Setup
 
-The access token is required for the "Show Accounts", "Show Statement", "Show Budgets", "Sync Statements" and "Jar Progress Menu Bar" commands and for AI questions about your accounts, transactions and budgets. "Show Currency Rates" and currency questions work without it. To create an access token:
+The access token is required for the "Show Accounts", "Show Statement", "Show Budgets", "Show Subscriptions", "Sync Statements" and "Jar Progress Menu Bar" commands and for AI questions about your accounts, transactions, budgets and subscriptions. "Show Currency Rates" and currency questions work without it. To create an access token:
 
 1. Visit https://api.monobank.ua/
 2. Authenticate with your account
@@ -61,9 +61,10 @@ Both menu bar commands are macOS only. The rate refreshes every 2 hours, and whe
 Browse the transactions of a card, FOP account or jar. Pick the account in the search bar, or use "View Statement" (`⌘ ⇧ S`) on an account in "Show Accounts".
 
 - Choose a period with "Change Period…" (`⌘ ⇧ P`): today, the last 7 days, this or last month, the last 31 days, or a custom range of up to 31 days.
-- The first item summarizes the period: income, spending, cashback, your budgets (see "Budgets") and spending by category.
+- The first item summarizes the period: income, spending and how much of it went to subscriptions, cashback, your budgets (see "Budgets") and spending by category.
 - Toggle details (`⌘ ⇧ D`) to see a transaction's category, cashback, balance after it, comment, receipt number and counterparty.
-- Search by description, comment, counterparty, category (in English or Ukrainian), MCC or amount.
+- Search by description, comment, counterparty, category (in English or Ukrainian), MCC or amount. Type "subscription" to see only the charges of subscriptions.
+- Charges of a subscription (see "Show Subscriptions") have a "Subscription" tag, with its cadence and next charge in the details. Their actions show it in "Show Subscriptions", or mark it with "Not a Subscription" (`⌃ X`) if it isn't one.
 - Export the statement to CSV in your Downloads folder, or copy it as CSV.
 
 monobank allows one statement request per 60 seconds. Statements are cached, and when a request has to wait, a countdown shows until it's sent. One request returns up to 500 transactions; use "Load Older Transactions" to get more.
@@ -78,6 +79,17 @@ Set a monthly limit for one or more spending categories, e.g. "Cafes & Restauran
 - **Where**: the Summary in "Show Statement" shows your budgets for "This Month" and "Last Month" on your budget accounts, totaled across all of them, with a ring, spent of the limit, what's left and, for this month, how much you can spend per day. An orange or red mark on the Summary means a budget is near (80%) or over its limit. While searching, budgets still cover the whole month.
 - **Manage**: use "Manage Budgets…" (`⌘ ⇧ U`) in "Show Statement", or the "Show Budgets" command. It shows saved spending right away, then updates the budget accounts not updated in the last 5 minutes, one request a minute. Switch between this and last month with `⌘ ⇧ P`, and see each budget's spending per card in the details. Create a budget from scratch or from a preset (Cafes & Restaurants, Groceries, Taxi, Transport, Car, Health, Clothes & Shoes, Subscriptions & Games, Entertainment, Beauty, Pets), then edit, reorder or delete it.
 - **Categories** are merchant category names, searchable in English or Ukrainian. Categories you spent on recently are listed first.
+
+## Show Subscriptions
+
+See your recurring charges, such as Netflix, Spotify, ChatGPT or your mobile plan, with the amount and when the next one is due, without tracking them by hand.
+
+- **How they're found**: from the transactions stored on your device, across all your cards and FOP accounts. A subscription is a merchant charging about the same amount (within 10%) every week, month or quarter. Three charges confirm it; two are enough for typical subscription merchants (streaming, apps, mobile), marked "Likely". Subscriptions billed through one merchant at the same price, e.g. iCloud and Telegram at $2.99 through Apple, are told apart by the day of the month they're charged on; rename them to tell which is which. Charges that change every time, such as utility bills, aren't subscriptions, and neither are transfers, cash, taxes or top-ups of your jars. Yearly subscriptions aren't detected.
+- **Amounts** are in the charge's own currency, e.g. $20 for ChatGPT on a UAH card, so they don't change with the exchange rate. A price change, e.g. Netflix going from $15.49 to $17.99, keeps the subscription and shows the old price in the details. When a subscription is charged on time at another price only once so far, it shows the new price with a "New Price?" tag: confirm it with "Confirm New Price", or choose "Not a Price Change" to keep the old price (the subscription then shows as possibly cancelled). Undo it from the toast, or later with "It Was a Price Change". A second charge at the new price confirms it on its own. The first section shows the approximate total per month in UAH.
+- **Sections**: Upcoming (the next 7 days), Active, and Possibly Cancelled for subscriptions whose expected charge didn't come.
+- **History**: the command makes no requests when it opens. "Sync Statements" loads the history in the background, back to the "Keep Statements For" preference (3 months by default), and subscriptions show once a merchant has charged at least twice. Use Refresh (`⌘ R`) to update the last 31 days.
+- **Corrections**: rename a subscription with "Rename…" (`⌘ E`), or hide something that isn't one with "Not a Subscription" (`⌃ X`), here or on one of its charges in "Show Statement". Undo it from the toast, or later with "Show Hidden Subscriptions" (`⌘ ⇧ H`) and "Unhide".
+- Toggle details (`⌘ ⇧ D`) to see the monthly and yearly cost, the card, the category and every charge, and open the card's statement with `⌘ ⇧ S`.
 
 ## Sync Statements
 
@@ -109,6 +121,8 @@ Mention `@monobank` in Raycast AI Chat or Quick AI and ask in English or Ukraini
 - Am I over budget anywhere?
 - Встанови бюджет 5000 грн на таксі
 - Скільки я отримав переказів минулого місяця?
+- What subscriptions do I have?
+- Коли наступне списання за Netflix?
 
 AI finds accounts and jars by their names, including the custom names you give accounts in "Show Accounts", even when you ask in another language (e.g. "основний рахунок" for an account named "Primary"). When you don't name an account, it uses the default one (the first pinned account, or the first UAH card) and tells you which.
 

@@ -202,11 +202,21 @@ export interface StatementSummary {
   holdCount: number;
   /** Expenses by category name, largest first. Savings aren't included. */
   categories: CategorySpending[];
+  /** The part of `expenses` that is charges of subscriptions. Positive. */
+  subscriptions: { amount: number; count: number };
 }
 
-/** `currency` is used when there are no transactions, e.g. when a search matches none. */
-export function summarize(transactions: Transaction[], currency?: Currency): StatementSummary {
+/**
+ * `currency` is used when there are no transactions, e.g. when a search matches none. `isSubscriptionCharge` tells
+ * which expenses count as subscriptions.
+ */
+export function summarize(
+  transactions: Transaction[],
+  currency?: Currency,
+  isSubscriptionCharge?: (transaction: Transaction) => boolean,
+): StatementSummary {
   const categories = new Map<string, CategorySpending>();
+  const subscriptions = { amount: 0, count: 0 };
   let income = 0;
   let expenses = 0;
   let savings = 0;
@@ -228,6 +238,10 @@ export function summarize(transactions: Transaction[], currency?: Currency): Sta
     }
 
     expenses -= transaction.amount;
+    if (isSubscriptionCharge?.(transaction)) {
+      subscriptions.amount -= transaction.amount;
+      subscriptions.count++;
+    }
 
     const { name, nameUk, icon } = transaction.category;
     const category = categories.get(name) ?? { name, nameUk, icon, amount: 0, count: 0 };
@@ -245,6 +259,7 @@ export function summarize(transactions: Transaction[], currency?: Currency): Sta
     count: transactions.length,
     holdCount,
     categories: [...categories.values()].sort((a, b) => b.amount - a.amount),
+    subscriptions,
   };
 }
 
@@ -270,13 +285,21 @@ function normalizeSearchText(text: string) {
   return text.toLowerCase().replace(/[’ʼ‘`]/g, "'");
 }
 
-/** Transactions that contain every word of `query` in their search texts. An empty query returns `transactions`. */
-export function filterTransactions(transactions: Transaction[], query: string) {
+/**
+ * Transactions that contain every word of `query` in their search texts. An empty query returns `transactions`.
+ * `getExtraTexts` adds texts that aren't part of the transaction, e.g. the "Subscription" tag.
+ */
+export function filterTransactions(
+  transactions: Transaction[],
+  query: string,
+  getExtraTexts?: (transaction: Transaction) => string[],
+) {
   const terms = normalizeSearchText(query.trim()).split(/\s+/).filter(Boolean);
   if (!terms.length) return transactions;
 
   return transactions.filter((transaction) => {
-    const text = normalizeSearchText(getSearchTexts(transaction).join("\n"));
+    const texts = [...getSearchTexts(transaction), ...(getExtraTexts?.(transaction) ?? [])];
+    const text = normalizeSearchText(texts.join("\n"));
     return terms.every((term) => text.includes(term));
   });
 }
@@ -347,8 +370,13 @@ export function getAmountColor(amount: number) {
 
 export const HOLD_TOOLTIP = "Not settled by the merchant's bank yet. The amount may still change.";
 
-export function getTransactionAccessories(transaction: Transaction): List.Item.Accessory[] {
+/** `subscriptionTag`: from `getSubscriptionTag`, when the transaction is a charge of a subscription. */
+export function getTransactionAccessories(
+  transaction: Transaction,
+  subscriptionTag?: List.Item.Accessory,
+): List.Item.Accessory[] {
   return [
+    ...(subscriptionTag ? [subscriptionTag] : []),
     ...(transaction.hold ? [{ tag: { value: "Hold", color: Color.SecondaryText }, tooltip: HOLD_TOOLTIP }] : []),
     {
       text: {

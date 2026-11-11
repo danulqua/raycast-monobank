@@ -36,8 +36,8 @@ export function subscribeToStatements(listener: (accountId: string) => void) {
   };
 }
 
-/** The transactions of one budget account in the period. */
-export interface BudgetStatementGroup {
+/** The transactions of one account in the period. */
+export interface AccountStatementGroup {
   account: Account;
   /** Transactions in the period, newest first. */
   transactions: Transaction[];
@@ -45,19 +45,24 @@ export interface BudgetStatementGroup {
   syncedAt: number;
   /** Whether the period has transactions of this account that aren't loaded. */
   incomplete: boolean;
+  /** Unix seconds: where the transactions run without gaps to the end of the period (its start when complete). */
+  loadedSince: number;
 }
 
 /**
- * The statements of `accounts` for `period`, for budgets. Nothing is loaded while either is `undefined`.
+ * The statements of `accounts` for `period`, e.g. for budgets or subscriptions. Nothing is loaded while either is
+ * `undefined`.
  *
  * The stored statements show at once. With `sync`, each account whose statement is older than
  * `BUDGET_SYNC_MAX_AGE` (or misses part of the period) is then updated, one request at a time and the stalest
- * first, with a toast showing the progress. Without it, nothing is requested.
+ * first, with a toast showing the progress. Without it, nothing is requested until `refresh`.
+ *
+ * `label` names what is updated in the toasts, e.g. "budgets" for "Updating budgets".
  */
-export function useBudgetStatements(
+export function useAccountStatements(
   accounts: Account[] | undefined,
   period: Period | undefined,
-  { sync = false }: { sync?: boolean } = {},
+  { sync = false, label = "budgets" }: { sync?: boolean; label?: string } = {},
 ) {
   const { token } = getPreferenceValues<Preferences>();
   const [stored, setStored] = useState<{ key: string; statements: Record<string, StoredStatement> }>();
@@ -114,7 +119,7 @@ export function useBudgetStatements(
           if (!isCurrent() || !request) throw new CancelledError();
 
           const progress = queue.length > 1 ? ` · ${index + 1} of ${queue.length}` : "";
-          toast = await showToast({ style: Toast.Style.Animated, title: `Updating budgets${progress}` });
+          toast = await showToast({ style: Toast.Style.Animated, title: `Updating ${label}${progress}` });
 
           const page = await withRateLimit(
             () => getStatement(token, account.id, request.from, request.to),
@@ -141,7 +146,7 @@ export function useBudgetStatements(
         if (!getTokenError(error)) {
           showToast({
             style: Toast.Style.Failure,
-            title: "Failed to update budgets",
+            title: `Failed to update ${label}`,
             message: error instanceof ApiError ? error.description : undefined,
           });
           toast = undefined;
@@ -151,7 +156,7 @@ export function useBudgetStatements(
         await toast?.hide();
       }
     },
-    [token, accountIds, resolvedPeriod?.key, loadKey],
+    [token, accountIds, resolvedPeriod?.key, loadKey, label],
   );
 
   // Reads the stored statements when the accounts or the period change, then syncs them with `sync`.
@@ -199,13 +204,21 @@ export function useBudgetStatements(
 
   const tokenError = getTokenError(error);
 
-  const groups = useMemo((): BudgetStatementGroup[] => {
+  const groups = useMemo((): AccountStatementGroup[] => {
     if (!accounts || !resolvedPeriod || !statements) return [];
     const now = Date.now();
 
     return accounts.flatMap((account) => {
       const statement = statements[account.id];
       if (!statement) return [];
+      // A period that ends in the future (e.g. at the end of today) is checked until the last sync, like one that
+      // runs until now: transactions since then are new, not missing.
+      const isOngoing = resolvedPeriod.to === undefined || resolvedPeriod.to * 1000 >= now;
+      const gaps = getPeriodGaps(
+        statement,
+        { from: resolvedPeriod.from, to: isOngoing ? undefined : resolvedPeriod.to },
+        now,
+      );
       return [
         {
           account,
@@ -214,7 +227,8 @@ export function useBudgetStatements(
             ? []
             : getPeriodItems(statement, resolvedPeriod).map((item) => toTransaction(item, account.currency, jarTitles)),
           syncedAt: statement.syncedAt,
-          incomplete: getPeriodGaps(statement, resolvedPeriod, now).length > 0,
+          incomplete: gaps.length > 0,
+          loadedSince: gaps[0] ? gaps[0].to + 1 : resolvedPeriod.from,
         },
       ];
     });

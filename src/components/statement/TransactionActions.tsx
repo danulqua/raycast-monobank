@@ -1,11 +1,18 @@
 import { Action, ActionPanel, Icon } from "@raycast/api";
 import { shortcuts } from "../../data/shortcuts";
-import { Transaction } from "../../types";
+import { Subscription, Transaction } from "../../types";
 import { formatPlainAmount, getCheckGovUrl } from "../../utils";
+import SubscriptionActions, { SetSubscriptionHidden } from "../subscriptions/SubscriptionActions";
 import StatementActionsSection, { StatementActionsProps } from "./StatementActionsSection";
 
-export default function TransactionActions(props: { transaction: Transaction; statement: StatementActionsProps }) {
-  const { transaction: t, statement } = props;
+export default function TransactionActions(props: {
+  transaction: Transaction;
+  statement: StatementActionsProps;
+  /** The subscription the transaction is a charge of. */
+  subscription?: Subscription;
+  onSetSubscriptionHidden: SetSubscriptionHidden;
+}) {
+  const { transaction: t, statement, subscription, onSetSubscriptionHidden } = props;
 
   return (
     <ActionPanel>
@@ -31,6 +38,8 @@ export default function TransactionActions(props: { transaction: Transaction; st
         )}
         <Action.CopyToClipboard title="Copy Transaction ID" content={t.id} />
       </ActionPanel.Section>
+
+      {subscription && <SubscriptionActions subscription={subscription} onSetHidden={onSetSubscriptionHidden} />}
 
       <StatementActionsSection {...statement} />
     </ActionPanel>

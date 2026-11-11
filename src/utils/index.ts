@@ -7,3 +7,4 @@ export * from "./statement";
 export * from "./requisites";
 export * from "./budgets";
 export * from "./savings";
+export * from "./subscriptions";

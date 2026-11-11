@@ -14,18 +14,19 @@ import { existsSync } from "node:fs";
 import { writeFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import { join, parse } from "node:path";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { TokenError } from "../../api/monobank";
 import { STATEMENT_SELECTION_TTL, STORAGE_KEYS } from "../../data/constants";
 import {
   useBudgetAccounts,
-  useBudgetStatements,
+  useAccountStatements,
   useBudgets,
   useRecentValue,
   useStatement,
   useStatementAccount,
+  useSubscriptions,
 } from "../../hooks";
-import { AccountOrJar, Period, SavedPeriod } from "../../types";
+import { AccountOrJar, Period, SavedPeriod, Subscription, Transaction } from "../../types";
 import {
   DEFAULT_PERIOD,
   filterTransactions,
@@ -104,10 +105,40 @@ function StatementList(props: {
     if (tokenError === "invalid") showInvalidTokenToast();
   }, [tokenError]);
 
+  // Subscriptions of this account, from its stored history like in "Show Subscriptions". Jars have none.
+  const [now] = useState(() => new Date());
+  const subscriptionAccounts = useMemo(() => (account && isAccount(account) ? [account] : undefined), [account?.id]);
+  const { subscriptions, setHidden: setSubscriptionHidden } = useSubscriptions(subscriptionAccounts, now);
+  const subscriptionByCharge = useMemo(() => {
+    const map = new Map<string, Subscription>();
+    for (const subscription of subscriptions) {
+      for (const charge of subscription.charges) map.set(charge.id, subscription);
+    }
+    return map;
+  }, [subscriptions]);
+  // Charges with the Subscription tag: hidden subscriptions have none.
+  const isSubscriptionCharge = useCallback(
+    (transaction: Transaction) => {
+      const subscription = subscriptionByCharge.get(transaction.id);
+      return !!subscription && !subscription.hidden;
+    },
+    [subscriptionByCharge],
+  );
+
   // Filtered here rather than by Raycast, so the Summary stays at the top and totals what the search found.
-  const filtered = useMemo(() => filterTransactions(transactions, searchText), [transactions, searchText]);
+  // "subscription" finds the charges with the Subscription tag.
+  const filtered = useMemo(
+    () =>
+      filterTransactions(transactions, searchText, (transaction) =>
+        isSubscriptionCharge(transaction) ? SUBSCRIPTION_SEARCH_TEXTS : [],
+      ),
+    [transactions, searchText, isSubscriptionCharge],
+  );
   const days = useMemo(() => groupByDay(filtered), [filtered]);
-  const summary = useMemo(() => summarize(filtered, account?.currency), [filtered, account?.currency]);
+  const summary = useMemo(
+    () => summarize(filtered, account?.currency, isSubscriptionCharge),
+    [filtered, account?.currency, isSubscriptionCharge],
+  );
 
   // Budgets count the budget accounts for a calendar month, from every loaded transaction, whatever the search.
   // They show only on a budget account: this one's live transactions plus the stored ones of the others.
@@ -120,7 +151,7 @@ function StatementList(props: {
     [budgetAccounts.accounts, account?.id],
   );
   // Stored data only: the Summary never spends the rate limit on other cards.
-  const otherStatements = useBudgetStatements(otherBudgetAccounts, budgetMonth && period, { sync: false });
+  const otherStatements = useAccountStatements(otherBudgetAccounts, budgetMonth && period, { sync: false });
   const budgetProgress = useMemo(() => {
     if (!budgetMonth || !account) return [];
     const groups = [
@@ -230,6 +261,8 @@ function StatementList(props: {
               cashbackType={cashbackType}
               isShowingDetail={isShowingDetail}
               statement={statementActions}
+              subscription={subscriptionByCharge.get(transaction.id)}
+              onSetSubscriptionHidden={setSubscriptionHidden}
             />
           ))}
         </List.Section>
@@ -253,6 +286,9 @@ function StatementList(props: {
     </List>
   );
 }
+
+/** What the Subscription tag is found by, in English and Ukrainian. */
+const SUBSCRIPTION_SEARCH_TEXTS = ["Subscription", "Підписка"];
 
 /** `path`, or `name (2).ext`, `name (3).ext`… if a file with that name already exists. */
 function getAvailablePath(path: string) {

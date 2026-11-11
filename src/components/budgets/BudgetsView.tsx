@@ -1,7 +1,7 @@
 import { Action, Icon } from "@raycast/api";
 import { useEffect, useMemo, useState } from "react";
 import { shortcuts } from "../../data/shortcuts";
-import { useBudgetAccounts, useBudgetStatements } from "../../hooks";
+import { useBudgetAccounts, useAccountStatements } from "../../hooks";
 import { getBudgetMonth } from "../../utils";
 import { showInvalidTokenToast } from "../TokenErrorEmptyView";
 import BudgetAccountsForm from "./BudgetAccountsForm";
@@ -20,7 +20,7 @@ export default function BudgetsView(props: { initialMonth?: BudgetPeriod }) {
   const month = useMemo(() => getBudgetMonth(period), [period]);
 
   const budgetAccounts = useBudgetAccounts();
-  const statements = useBudgetStatements(budgetAccounts.accounts, period, { sync: true });
+  const statements = useAccountStatements(budgetAccounts.accounts, period, { sync: true });
   const tokenError = budgetAccounts.tokenError ?? statements.tokenError;
 
   useEffect(() => {

@@ -19,6 +19,8 @@ export const STORAGE_KEYS = {
   budgets: `${STORAGE_PREFIX}budgets`,
   /** The ids of the accounts budgets count, or nothing to use the default ones (see `resolveBudgetAccounts`). */
   budgetAccounts: `${STORAGE_PREFIX}budgetAccounts`,
+  /** Renamed and hidden subscriptions, by `Subscription.key`. */
+  subscriptionOverrides: `${STORAGE_PREFIX}subscriptionOverrides`,
 } as const;
 
 /** The stored statement of one account or jar (see `StoredStatement`). */
@@ -79,6 +81,49 @@ export const BUDGET_WARNING_RATIO = 0.8;
  * opening budgets again soon after doesn't wait for one request per card.
  */
 export const BUDGET_SYNC_MAX_AGE = 5 * 60_000;
+
+/**
+ * How much a subscription's charges can differ from each other, so one charged in another currency still matches
+ * (its amount is compared in the operation currency). Larger changes start a new series, e.g. a price change.
+ */
+export const SUBSCRIPTION_AMOUNT_TOLERANCE = 0.1;
+/**
+ * The most a subscription's price can change, as a share of the lower price, to still count as the same one:
+ * up to 3 times, e.g. 149 → 299 ₴ for a family plan.
+ */
+export const SUBSCRIPTION_MAX_PRICE_CHANGE = 2;
+/**
+ * How many irregular charges of the same merchant a subscription's span can have, per charge of its own. More,
+ * and the merchant is a shop visited often whose charges happen to be about a month apart.
+ */
+export const SUBSCRIPTION_MAX_NOISE = 0.5;
+/**
+ * How many subscriptions of one merchant at the same price can be told apart by the day they're charged on, e.g.
+ * iCloud and Telegram, both $2.99 through Apple, on the 12th and the 21st.
+ */
+export const SUBSCRIPTION_MAX_INTERLEAVED = 3;
+/** The share of gaps between charges that must match the cadence. The rest can be twice as long (a missed charge). */
+export const SUBSCRIPTION_MIN_GAP_SHARE = 0.75;
+/** Gaps between charges, in days, for each cadence. */
+export const SUBSCRIPTION_CADENCE_DAYS = {
+  weekly: [6, 8],
+  monthly: [27, 33],
+  quarterly: [85, 96],
+} as const satisfies Record<string, readonly [min: number, max: number]>;
+/** How many days past its expected date a charge can come before the subscription shows as possibly cancelled. */
+export const SUBSCRIPTION_GRACE_DAYS = { weekly: 2, monthly: 5, quarterly: 10 } as const;
+/** Upcoming subscriptions are the ones expected within this many days. */
+export const SUBSCRIPTION_UPCOMING_DAYS = 7;
+/**
+ * MCCs that are never subscriptions: transfers (4829, 6538, 6540), cash (6010, 6011) and buying currency or
+ * crypto (6012), and taxes (9311), which recur at a fixed amount but aren't subscriptions.
+ */
+export const SUBSCRIPTION_EXCLUDED_MCC: ReadonlySet<number> = new Set([4829, 6010, 6011, 6012, 6538, 6540, 9311]);
+/**
+ * MCCs of typical subscriptions: telecom (4814), cable and streaming (4899), digital goods (5815–5818), direct
+ * marketing subscriptions (5968) and software services (7372). Two charges are enough for these.
+ */
+export const SUBSCRIPTION_MCC: ReadonlySet<number> = new Set([4814, 4899, 5815, 5816, 5817, 5818, 5968, 7372]);
 
 /** Receipts are looked up on check.gov.ua by their number. It has no documented deep link. */
 export const CHECK_GOV_URL = "https://check.gov.ua/";
