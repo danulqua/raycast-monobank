@@ -6,9 +6,11 @@ import {
   formatBudgetPercentage,
   formatHryvnias,
   formatSpentOfLimit,
+  formatSyncTime,
   getBudgetAlert,
   getBudgetColor,
   getBudgetIcon,
+  isSyncedToday,
   StatementSummary,
 } from "../../utils";
 import StatementActionsSection, { StatementActionsProps } from "./StatementActionsSection";
@@ -29,11 +31,26 @@ export default function SummaryListItem(props: {
   /** Empty when there are no budgets or the period isn't a budget month. */
   budgetProgress: BudgetProgress[];
   budgetMonth?: BudgetMonth;
-  /** Whether the period has older transactions that aren't loaded, so budgets may be undercounted. */
+  /** How many cards budgets count, this one included. */
+  budgetCardCount: number;
+  /** Unix milliseconds of the least recent sync among the other budget cards, if there are any. */
+  otherCardsSyncedAt?: number;
+  /** Whether the month has transactions that aren't loaded on any budget card, so budgets may be undercounted. */
   isPartial: boolean;
   statement: StatementActionsProps;
 }) {
-  const { summary, periodLabel, searchText, totalCount, budgetProgress, budgetMonth, isPartial, statement } = props;
+  const {
+    summary,
+    periodLabel,
+    searchText,
+    totalCount,
+    budgetProgress,
+    budgetMonth,
+    budgetCardCount,
+    otherCardsSyncedAt,
+    isPartial,
+    statement,
+  } = props;
   const { currency } = summary;
   if (!currency) return null;
 
@@ -44,6 +61,11 @@ export default function SummaryListItem(props: {
   const count = summary.holdCount ? `${summary.count} (${summary.holdCount} on hold)` : `${summary.count}`;
   const isSearching = searchText.length > 0;
   const budgetAlert = getBudgetAlert(budgetProgress);
+  const budgetCards = budgetCardCount === 1 ? "" : ` · ${budgetCardCount} cards`;
+  const otherCardsUpdated =
+    otherCardsSyncedAt !== undefined && !isSyncedToday(otherCardsSyncedAt)
+      ? formatSyncTime(otherCardsSyncedAt)
+      : undefined;
 
   return (
     <List.Item
@@ -82,10 +104,17 @@ export default function SummaryListItem(props: {
                 <>
                   <Metadata.Separator />
                   <Metadata.Label
-                    key={`budgets:${budgetMonth.label}:${isSearching}`}
-                    title={`Budgets · ${budgetMonth.label}${isSearching ? " (whole month)" : ""}`}
+                    key={`budgets:${budgetMonth.label}:${budgetCards}:${isSearching}`}
+                    title={`Budgets · ${budgetMonth.label}${budgetCards}${isSearching ? " (whole month)" : ""}`}
                   />
                   {isPartial && <Metadata.Label title="Partial" text="Older transactions not loaded" />}
+                  {otherCardsUpdated && (
+                    <Metadata.Label
+                      key={`otherCards:${otherCardsUpdated}`}
+                      title="Other Cards"
+                      text={otherCardsUpdated}
+                    />
+                  )}
                   {budgetProgress.map((progress) => (
                     <BudgetLabels key={progress.budget.id} progress={progress} isCurrentMonth={budgetMonth.isCurrent} />
                   ))}

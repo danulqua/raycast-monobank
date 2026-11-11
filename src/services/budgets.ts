@@ -1,3 +1,4 @@
+import { LocalStorage } from "@raycast/api";
 import { randomUUID } from "node:crypto";
 import { STORAGE_KEYS } from "../data/constants";
 import { Budget, MoveDirection } from "../types";
@@ -77,4 +78,22 @@ export async function moveBudget(id: string, direction: MoveDirection) {
 
   [budgets[index], budgets[target]] = [budgets[target], budgets[index]];
   await writeBudgets(budgets);
+}
+
+/**
+ * The ids of the accounts budgets count, or `undefined` when the user hasn't chosen: the default ones are counted
+ * then (see `resolveBudgetAccounts`), so a new UAH card counts without choosing again.
+ */
+export async function readBudgetAccountIds(): Promise<string[] | undefined> {
+  const stored = await readJson<unknown>(STORAGE_KEYS.budgetAccounts);
+  return Array.isArray(stored) ? stored.filter((id): id is string => typeof id === "string") : undefined;
+}
+
+/** Saves the accounts budgets count. `undefined` goes back to the default ones. */
+export async function writeBudgetAccountIds(ids: string[] | undefined) {
+  if (ids === undefined) {
+    await LocalStorage.removeItem(STORAGE_KEYS.budgetAccounts);
+  } else {
+    await writeJson(STORAGE_KEYS.budgetAccounts, ids);
+  }
 }

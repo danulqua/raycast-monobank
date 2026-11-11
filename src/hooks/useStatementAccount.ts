@@ -9,7 +9,7 @@ import { usePinned } from "./usePinned";
 import { useRecentValue } from "./useRecentValue";
 
 /**
- * The account picked in the search bar of "Show Statement" and "Show Budgets", which share the remembered choice.
+ * The account picked in the search bar of "Show Statement". ("Show Budgets" counts the budget accounts instead.)
  * `account` is `undefined` until it's known; render the dropdown only then, so it starts on it.
  */
 export function useStatementAccount() {

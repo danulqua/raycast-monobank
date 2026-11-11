@@ -2,67 +2,82 @@ import { Action, ActionPanel, Alert, Color, Icon, List, Toast, confirmAlert, sho
 import { ReactNode, useMemo, useState } from "react";
 import { budgetPresets } from "../../data/budgetPresets";
 import { shortcuts } from "../../data/shortcuts";
-import { useBudgets } from "../../hooks";
-import { AccountOrJar, Budget, Transaction } from "../../types";
+import { BudgetStatementGroup, useBudgets } from "../../hooks";
+import { Account, Budget, Transaction } from "../../types";
 import {
   BudgetMonth,
   BudgetProgress,
+  formatBudgetAccounts,
   formatBudgetPercentage,
   formatHryvnias,
   formatSpentOfLimit,
+  formatSyncTime,
   getBudgetColor,
   getBudgetIcon,
   getBudgetProgress,
   getCategoryOptions,
   getStatementItemTitle,
+  isSyncedToday,
 } from "../../utils";
 import BudgetForm from "./BudgetForm";
 
 const { Metadata } = List.Item.Detail;
 
 /**
- * The saved budgets, with each one's progress when `account` is in UAH and `month` is set. Used by "Manage Budgets…"
- * in "Show Statement" and by the "Show Budgets" command.
+ * The saved budgets, with each one's progress across the budget accounts when `month` is set. Used by
+ * "Manage Budgets…" in "Show Statement" and by the "Show Budgets" command.
  */
 export default function BudgetList(props: {
-  account?: AccountOrJar;
-  /** Every loaded transaction of the month, not only the ones a search matched. */
-  transactions: Transaction[];
+  /** The accounts budgets count. */
+  accounts: Account[];
+  /** Every loaded transaction of the month per budget account, not only the ones a search matched. */
+  groups: BudgetStatementGroup[];
   month?: BudgetMonth;
   isLoading?: boolean;
   /** Whether the month has older transactions that aren't loaded. */
   isPartial?: boolean;
+  /** Unix milliseconds of the least recent sync among the budget accounts. */
+  oldestSyncedAt?: number;
   /** Shown in the section subtitle instead of the usual note, e.g. a token problem. */
   note?: string;
-  searchBarAccessory?: List.Props["searchBarAccessory"];
   /** Extra actions on every item, e.g. switching the month. */
   actions?: ReactNode;
 }) {
-  const { account, transactions, month, isLoading = false, isPartial, note, searchBarAccessory, actions } = props;
+  const { accounts, groups, month, isLoading = false, isPartial, oldestSyncedAt, note, actions } = props;
   const { budgets, isLoading: isLoadingBudgets, remove, move } = useBudgets();
   const [isShowingDetail, setIsShowingDetail] = useState(false);
 
-  const isUah = account?.currency.code === "UAH";
+  const hasAccounts = accounts.length > 0;
   const progress = useMemo(
-    () => (isUah && month ? getBudgetProgress(budgets, transactions, month) : undefined),
-    [isUah, month, budgets, transactions],
+    () =>
+      hasAccounts && month
+        ? getBudgetProgress(
+            budgets,
+            groups.map((group) => ({ accountId: group.account.id, transactions: group.transactions })),
+            month,
+          )
+        : undefined,
+    [hasAccounts, month, budgets, groups],
   );
-  const spentCategories = useMemo(() => getSpentCategories(transactions), [transactions]);
+  const spentCategories = useMemo(() => getSpentCategories(groups.flatMap((group) => group.transactions)), [groups]);
 
   function getNote() {
     if (note) return note;
-    if (account && !isUah) return "Budgets count spending on UAH accounts only";
+    if (!hasAccounts && !isLoading) return "No UAH cards selected";
     if (!month) return "Progress shows for This Month and Last Month";
     if (isPartial) return "Partial: older transactions not loaded";
+    if (!isLoading && oldestSyncedAt !== undefined && !isSyncedToday(oldestSyncedAt)) {
+      return "Some cards not updated today";
+    }
     return undefined;
   }
 
-  const sectionTitle = [month?.label, account && getStatementItemTitle(account)].filter(Boolean).join(" · ");
+  const sectionTitle = [month?.label, hasAccounts && formatBudgetAccounts(accounts)].filter(Boolean).join(" · ");
 
   async function confirmDelete(budget: Budget) {
     const isConfirmed = await confirmAlert({
       title: `Delete "${budget.name}"?`,
-      message: "This budget will be removed from all accounts.",
+      message: "This budget will be deleted.",
       icon: { source: Icon.Trash, tintColor: Color.Red },
       primaryAction: { title: "Delete", style: Alert.ActionStyle.Destructive },
     });
@@ -91,7 +106,6 @@ export default function BudgetList(props: {
       isShowingDetail={isShowingDetail && budgets.length > 0}
       navigationTitle={sectionTitle ? `Budgets · ${sectionTitle}` : "Budgets"}
       searchBarPlaceholder="Search budgets"
-      searchBarAccessory={searchBarAccessory}
     >
       {!isLoadingBudgets && (
         <List.EmptyView
@@ -118,7 +132,7 @@ export default function BudgetList(props: {
               subtitle={isShowingDetail ? undefined : formatCategories(budget.categories)}
               keywords={budget.categories}
               accessories={getAccessories(budget, item)}
-              detail={<BudgetDetail budget={budget} progress={item} month={month} />}
+              detail={<BudgetDetail budget={budget} progress={item} month={month} groups={groups} />}
               actions={
                 <ActionPanel>
                   <ActionPanel.Section>
@@ -192,8 +206,13 @@ function PresetSubmenu(props: { budgets: Budget[]; spentCategories: string[] }) 
   );
 }
 
-function BudgetDetail(props: { budget: Budget; progress?: BudgetProgress; month?: BudgetMonth }) {
-  const { budget, progress, month } = props;
+function BudgetDetail(props: {
+  budget: Budget;
+  progress?: BudgetProgress;
+  month?: BudgetMonth;
+  groups: BudgetStatementGroup[];
+}) {
+  const { budget, progress, month, groups } = props;
   const options = getCategoryOptions();
   const color = progress && getBudgetColor(progress.status);
 
@@ -250,6 +269,24 @@ function BudgetDetail(props: { budget: Budget; progress?: BudgetProgress; month?
               />
             );
           })}
+          {progress && groups.length > 0 && (
+            <>
+              <Metadata.Separator />
+              <Metadata.Label title="Accounts" />
+              {groups.map(({ account, syncedAt }) => {
+                const spent = progress.byAccount.find((item) => item.accountId === account.id)?.spent ?? 0;
+                const text = `${formatHryvnias(spent)} · ${formatSyncTime(syncedAt)}`;
+                return (
+                  <Metadata.Label
+                    key={`account:${account.id}:${text}`}
+                    title={getStatementItemTitle(account)}
+                    icon={Icon.CreditCard}
+                    text={text}
+                  />
+                );
+              })}
+            </>
+          )}
         </Metadata>
       }
     />

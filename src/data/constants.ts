@@ -17,6 +17,8 @@ export const STORAGE_KEYS = {
   menuBarJar: `${STORAGE_PREFIX}menuBarJar`,
   rateHistory: `${STORAGE_PREFIX}rateHistory`,
   budgets: `${STORAGE_PREFIX}budgets`,
+  /** The ids of the accounts budgets count, or nothing to use the default ones (see `resolveBudgetAccounts`). */
+  budgetAccounts: `${STORAGE_PREFIX}budgetAccounts`,
 } as const;
 
 /** The stored statement of one account or jar (see `StoredStatement`). */
@@ -72,6 +74,11 @@ export const STATEMENT_SELECTION_TTL = 5 * 60_000;
 
 /** A budget shows a warning once this share of its limit is spent. */
 export const BUDGET_WARNING_RATIO = 0.8;
+/**
+ * How old the statement of a budget account can be before budgets update it. Longer than the rate limit, so
+ * opening budgets again soon after doesn't wait for one request per card.
+ */
+export const BUDGET_SYNC_MAX_AGE = 5 * 60_000;
 
 /** Receipts are looked up on check.gov.ua by their number. It has no documented deep link. */
 export const CHECK_GOV_URL = "https://check.gov.ua/";

@@ -188,19 +188,22 @@ export function getPeriodItems(stored: StoredStatement, period: StatementPeriod)
  * A missing part longer than one request covers is cut to its newest 31 days.
  * - `refresh`: always requests: the last 31 days, or the period itself when it's older.
  * - `older`: the newest missing part of the period.
+ *
+ * `staleAfter` (milliseconds) is how old the last sync can be before `auto` resyncs a period that runs until now.
  */
 export function planRequest(
   stored: StoredStatement,
   period: StatementPeriod,
   mode: RequestMode,
   now: number,
+  staleAfter = STATEMENT_RATE_LIMIT,
 ): StatementRequest | undefined {
   const window = resolvePeriod({ preset: "last31Days" }, new Date(now));
   const syncWindow: StatementRequest = { from: window.from };
   const isInWindow = period.from >= window.from;
   const isOngoing = period.to === undefined;
   const gaps = getPeriodGaps(stored, period, now);
-  const isStale = now - stored.syncedAt >= STATEMENT_RATE_LIMIT;
+  const isStale = now - stored.syncedAt >= staleAfter;
 
   switch (mode) {
     case "auto":
@@ -320,9 +323,14 @@ export interface LoadedStatement {
  * 31 days works when the stored statement has everything before the last 31 days, and throws `PeriodTooLongError`
  * otherwise, since a request covers at most 31 days. A request waits for
  * monobank's limit of one statement request per 60 seconds, which is shared with the commands, and is retried
- * once if monobank still answers 429.
+ * once if monobank still answers 429. `staleAfter` replaces the 60 seconds after which a period running until now
+ * is resynced (see `planRequest`).
  */
-export async function loadStatement(accountId: string, period: StatementPeriod): Promise<LoadedStatement> {
+export async function loadStatement(
+  accountId: string,
+  period: StatementPeriod,
+  { staleAfter }: { staleAfter?: number } = {},
+): Promise<LoadedStatement> {
   const { from, to } = period;
   const { token } = getPreferenceValues<Preferences>();
 
@@ -351,7 +359,7 @@ export async function loadStatement(accountId: string, period: StatementPeriod):
     }
   }
 
-  const request = planRequest(stored, period, "auto", nowMs);
+  const request = planRequest(stored, period, "auto", nowMs, staleAfter);
 
   if (request) {
     let page: StatementItemResponse[];

@@ -165,7 +165,7 @@ export default function BudgetForm(props: {
           <Form.TagPicker.Item key={item.name} value={item.name} title={item.title} icon={item.icon} />
         ))}
       </Form.TagPicker>
-      <Form.Description text="Budgets count the UAH account you're viewing, for This Month and Last Month. Refunds reduce the spending." />
+      <Form.Description text="Budgets count spending on the cards chosen in Choose Accounts…, for This Month and Last Month. Refunds reduce the spending." />
     </Form>
   );
 }

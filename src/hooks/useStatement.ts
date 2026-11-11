@@ -1,8 +1,7 @@
-import { LocalStorage, Toast, getPreferenceValues, showToast } from "@raycast/api";
+import { Toast, getPreferenceValues, showToast } from "@raycast/api";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toTransaction } from "../api/mappers";
-import { ApiError, RateLimitError, getStatement, getTokenError, requireToken } from "../api/monobank";
-import { STATEMENT_RATE_LIMIT, STATEMENT_REQUEST_DELAY, STORAGE_KEYS } from "../data/constants";
+import { ApiError, getStatement, getTokenError, requireToken } from "../api/monobank";
 import {
   RequestMode,
   StoredStatement,
@@ -14,9 +13,8 @@ import {
 } from "../services/statement";
 import { AccountOrJar, Period } from "../types";
 import { resolvePeriod } from "../utils/statement";
-
-/** A load was replaced by a newer one, or the view was closed, before it sent its request. */
-class CancelledError extends Error {}
+import { CancelledError, withRateLimit } from "./rateLimit";
+import { notifyStatementsChanged, subscribeToStatements } from "./useBudgetStatements";
 
 /**
  * The statement of `account` for `period`. Nothing is loaded while either is `undefined`.
@@ -63,8 +61,17 @@ export function useStatement(account: AccountOrJar | undefined, period: Period |
       },
     );
 
+    // Reads it again after another view stored it, e.g. "Manage Budgets…" updating every budget account.
+    const unsubscribe = subscribeToStatements((changedId) => {
+      if (changedId !== account.id) return;
+      readStoredStatement(account.id).then((statement) => {
+        if (!isCancelled) setStored({ accountId: account.id, statement });
+      }, console.error);
+    });
+
     return () => {
       isCancelled = true;
+      unsubscribe();
     };
   }, [account?.id]);
 
@@ -109,6 +116,7 @@ export function useStatement(account: AccountOrJar | undefined, period: Period |
         // Stored even if a newer load has started, since the request has already been spent.
         const next = await saveResponse(account.id, request, page, Date.now());
         if (accountId.current === account.id) setStored({ accountId: account.id, statement: next });
+        notifyStatementsChanged(account.id);
       } catch (error) {
         if (error instanceof CancelledError || !isCurrent()) return;
 
@@ -166,68 +174,4 @@ export function useStatement(account: AccountOrJar | undefined, period: Period |
     /** Seconds left until the rate limit allows the next request, or 0 when not waiting. */
     waitSeconds,
   };
-}
-
-/** Sends `request` once monobank's rate limit allows it. On a 429, waits a full minute and retries once. */
-async function withRateLimit<T>(
-  request: () => Promise<T>,
-  isCurrent: () => boolean,
-  onWait: (seconds: number) => void,
-): Promise<T> {
-  // A load replaced right away (e.g. while switching accounts) is cancelled before it uses the rate limit.
-  await sleep(STATEMENT_REQUEST_DELAY);
-  if (!isCurrent()) throw new CancelledError();
-
-  await waitForRateLimit(isCurrent, onWait);
-
-  try {
-    return await request();
-  } catch (error) {
-    if (!(error instanceof RateLimitError)) throw error;
-
-    // The limit was used elsewhere, e.g. by another app with the same token.
-    await LocalStorage.setItem(STORAGE_KEYS.statementRequestedAt, Date.now());
-    await waitForRateLimit(isCurrent, onWait);
-    return await request();
-  }
-}
-
-async function waitForRateLimit(isCurrent: () => boolean, onWait: (seconds: number) => void) {
-  const requestedAt = (await LocalStorage.getItem<number>(STORAGE_KEYS.statementRequestedAt)) ?? 0;
-  // Capped, in case the stored time is in the future after a clock change.
-  const remaining = Math.min(requestedAt + STATEMENT_RATE_LIMIT - Date.now(), STATEMENT_RATE_LIMIT);
-
-  if (remaining > 0) {
-    await countDown(Date.now() + remaining, isCurrent, onWait);
-  }
-
-  if (!isCurrent()) throw new CancelledError();
-  await LocalStorage.setItem(STORAGE_KEYS.statementRequestedAt, Date.now());
-}
-
-async function countDown(until: number, isCurrent: () => boolean, onWait: (seconds: number) => void) {
-  const getTitle = (seconds: number) => `Waiting for monobank's rate limit… ${seconds}s`;
-  const toast = await showToast({
-    style: Toast.Style.Animated,
-    title: getTitle(Math.ceil((until - Date.now()) / 1000)),
-  });
-
-  try {
-    for (let remaining = until - Date.now(); remaining > 0; remaining = until - Date.now()) {
-      if (!isCurrent()) throw new CancelledError();
-
-      const seconds = Math.ceil(remaining / 1000);
-      onWait(seconds);
-      toast.title = getTitle(seconds);
-
-      // Wake up when the displayed number of seconds changes.
-      await sleep(remaining - (seconds - 1) * 1000);
-    }
-  } finally {
-    await toast.hide();
-  }
-}
-
-function sleep(ms: number) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
 }

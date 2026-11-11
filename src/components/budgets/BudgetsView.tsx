@@ -1,41 +1,27 @@
-import { Action, Icon, List } from "@raycast/api";
+import { Action, Icon } from "@raycast/api";
 import { useEffect, useMemo, useState } from "react";
-import { TokenError } from "../../api/monobank";
 import { shortcuts } from "../../data/shortcuts";
-import { useStatement } from "../../hooks";
-import { AccountOrJar } from "../../types";
+import { useBudgetAccounts, useBudgetStatements } from "../../hooks";
 import { getBudgetMonth } from "../../utils";
 import { showInvalidTokenToast } from "../TokenErrorEmptyView";
+import BudgetAccountsForm from "./BudgetAccountsForm";
 import BudgetList from "./BudgetList";
 
 export type BudgetPeriod = "thisMonth" | "lastMonth";
 
 /**
- * The saved budgets with their progress for This Month or Last Month, loading that month's statement itself.
- * Used by Show Budgets and by "Manage Budgets…" in Show Statement.
+ * The saved budgets with their progress for This Month or Last Month across the budget accounts, updating their
+ * statements itself. Used by Show Budgets and by "Manage Budgets…" in Show Statement.
  */
-export default function BudgetsView(props: {
-  account?: AccountOrJar;
-  initialMonth?: BudgetPeriod;
-  isLoadingAccount?: boolean;
-  accountsTokenError?: TokenError;
-  searchBarAccessory?: List.Props["searchBarAccessory"];
-}) {
-  const {
-    account,
-    initialMonth = "thisMonth",
-    isLoadingAccount = false,
-    accountsTokenError,
-    searchBarAccessory,
-  } = props;
+export default function BudgetsView(props: { initialMonth?: BudgetPeriod }) {
+  const { initialMonth = "thisMonth" } = props;
   const [preset, setPreset] = useState<BudgetPeriod>(initialMonth);
   const period = useMemo(() => ({ preset }), [preset]);
   const month = useMemo(() => getBudgetMonth(period), [period]);
 
-  // Only UAH accounts have budgets, so other accounts don't spend a statement request.
-  const isUah = account?.currency.code === "UAH";
-  const statement = useStatement(isUah ? account : undefined, period);
-  const tokenError = accountsTokenError ?? statement.tokenError;
+  const budgetAccounts = useBudgetAccounts();
+  const statements = useBudgetStatements(budgetAccounts.accounts, period, { sync: true });
+  const tokenError = budgetAccounts.tokenError ?? statements.tokenError;
 
   useEffect(() => {
     if (tokenError === "invalid") showInvalidTokenToast();
@@ -43,13 +29,13 @@ export default function BudgetsView(props: {
 
   return (
     <BudgetList
-      account={account}
-      transactions={statement.transactions}
+      accounts={budgetAccounts.accounts ?? []}
+      groups={statements.groups}
       month={month}
-      isLoading={isLoadingAccount || (isUah && statement.isLoading)}
-      isPartial={statement.hasMore}
+      isLoading={budgetAccounts.isLoading || statements.isLoading}
+      isPartial={statements.isPartial}
+      oldestSyncedAt={statements.oldestSyncedAt}
       note={tokenError ? "Add a valid access token to see spending" : undefined}
-      searchBarAccessory={searchBarAccessory}
       actions={
         <>
           <Action
@@ -58,12 +44,18 @@ export default function BudgetsView(props: {
             shortcut={shortcuts.changePeriod}
             onAction={() => setPreset((preset) => (preset === "thisMonth" ? "lastMonth" : "thisMonth"))}
           />
-          {isUah && (
+          <Action.Push
+            title="Choose Accounts…"
+            icon={Icon.CreditCard}
+            shortcut={shortcuts.chooseAccounts}
+            target={<BudgetAccountsForm />}
+          />
+          {!tokenError && (
             <Action
               title="Refresh"
               icon={Icon.ArrowClockwise}
               shortcut={shortcuts.refresh}
-              onAction={statement.refresh}
+              onAction={statements.refresh}
             />
           )}
         </>

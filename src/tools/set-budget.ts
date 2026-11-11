@@ -28,7 +28,8 @@ type Input = {
  * Create a monthly budget (a spending limit in UAH for some categories), or change an existing one by name.
  * Categories come from `preset`, `categories` and `mccCodes` together; a new budget needs at least one. On update,
  * passing any of them replaces the categories (pass the current ones too to add one), and leaving all out keeps
- * them. The user confirms before it's saved. Budgets apply to every UAH account.
+ * them. The user confirms before it's saved. Budgets count the cards chosen in "Show Budgets" (by default, all
+ * personal UAH cards) together.
  */
 export default async function tool(input: Input) {
   const { existing, budget } = await resolveInput(input);
@@ -37,7 +38,7 @@ export default async function tool(input: Input) {
   return {
     created: !existing,
     budget: saved,
-    note: 'The user can see it in "Show Budgets" and in the Summary of "Show Statement" for This Month.',
+    note: 'Budgets count the cards chosen in "Show Budgets", together. The user can see it there and in the Summary of "Show Statement" for This Month.',
   };
 }
 

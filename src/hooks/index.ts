@@ -4,6 +4,7 @@ export * from "./useClientInfo";
 export * from "./useCurrencyRates";
 export * from "./usePinned";
 export * from "./useStatement";
+export * from "./useBudgetStatements";
 export * from "./useRecentValue";
 export * from "./useBudgets";
 export * from "./useStatementAccount";

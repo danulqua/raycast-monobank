@@ -32,10 +32,10 @@ instructions: |
   - monobank allows one statement request per minute, so a statement can take up to a minute to load.
 
   ## Budgets
-  - Budgets are monthly spending limits in UAH for some categories, e.g. "Cafes & Restaurants: 5 000 ₴". They are counted for the calendar month on one UAH account.
-  - For budget questions (бюджет, ліміт, "скільки ще можу витратити на…", "скільки лишилось на…", "am I over budget", "how much can I still spend on…"), call `get-budgets`. Use the current month by default; "last month"/"минулого місяця" → `month: "lastMonth"`. When the user names an account, call `get-accounts` first and pass its `id`.
+  - Budgets are monthly spending limits in UAH for some categories, e.g. "Cafes & Restaurants: 5 000 ₴". They are counted for the calendar month across the budget accounts: the UAH cards the user chose in "Show Budgets" (by default, all personal UAH cards).
+  - For budget questions (бюджет, ліміт, "скільки ще можу витратити на…", "скільки лишилось на…", "am I over budget", "how much can I still spend on…"), call `get-budgets`. Use the current month by default; "last month"/"минулого місяця" → `month: "lastMonth"`. Leave `accountId` out to count every budget account; pass it (from `get-accounts`) only when the user asks about one account's share.
   - Match the user's words to a budget by meaning, across languages: "кафе" ↔ "Cafes & Restaurants", "продукти" ↔ "Groceries".
-  - Answer with spent of the limit, what's `left` (or how much it's over by), and for the current month `perDayLeft` (how much per day until the month ends). Mention every budget with `status` "over" or "warning". Say which account was counted.
+  - Answer with spent of the limit, what's `left` (or how much it's over by), and for the current month `perDayLeft` (how much per day until the month ends). Mention every budget with `status` "over" or "warning". Say how many and which cards were counted (`accounts`), and use `byAccount` when the user asks which card the spending was on. When `incomplete` is true, say the total may be low.
   - When the user asks about a category that has no budget, answer the spending with `get-transactions` instead and mention that a budget can be set.
   - To create or change a budget ("встанови бюджет", "set a budget", "зміни ліміт"), call `set-budget`; to remove one, call `delete-budget`. The user confirms in Raycast before anything is saved. Prefer a `preset` when one fits the category, else `mccCodes` from the table in Transactions, or `categories`. Limits are in UAH. To change an existing budget, pass its exact name from `get-budgets`.
   - When `get-budgets` returns no budgets, say so and suggest creating one (mention a few `presets`) with you or in the "Show Budgets" command.
@@ -650,12 +650,16 @@ evals:
   - input: "@monobank Скільки ще можу витратити на кафе цього місяця?"
     mocks:
       get-budgets:
-        account:
-          id: acc-black-uah
-          name: Black card UAH
-          currency: UAH
-          isDefault: true
-          usedBecauseNoneWasNamed: true
+        accounts:
+          - id: acc-black-uah
+            name: Black card UAH
+            updatedAt: "2026-11-10T12:00"
+            incomplete: false
+          - id: acc-white-uah
+            name: White card UAH
+            updatedAt: "2026-11-10T11:58"
+            incomplete: false
+        onlyAccountAsked: false
         month: November
         period:
           from: "2026-11-01T00:00"
@@ -672,6 +676,11 @@ evals:
             perDayLeft: 83.81
             projected: 9720
             daysLeft: 21
+            byAccount:
+              - name: Black card UAH
+                spent: 2140
+              - name: White card UAH
+                spent: 1100
           - id: budget-taxi
             name: Taxi
             categories: ["Taxi"]
@@ -683,6 +692,9 @@ evals:
             perDayLeft: 42.38
             projected: 1830
             daysLeft: 21
+            byAccount:
+              - name: Black card UAH
+                spent: 610
         incomplete: false
         presets: ["Cafes & Restaurants", "Groceries", "Taxi", "Transport", "Car", "Health", "Clothes & Shoes", "Subscriptions & Games", "Entertainment", "Beauty", "Pets"]
     expected:
@@ -692,12 +704,16 @@ evals:
   - input: "@monobank Am I over budget anywhere?"
     mocks:
       get-budgets:
-        account:
-          id: acc-black-uah
-          name: Black card UAH
-          currency: UAH
-          isDefault: true
-          usedBecauseNoneWasNamed: true
+        accounts:
+          - id: acc-black-uah
+            name: Black card UAH
+            updatedAt: "2026-11-10T12:00"
+            incomplete: false
+          - id: acc-white-uah
+            name: White card UAH
+            updatedAt: "2026-11-10T11:58"
+            incomplete: false
+        onlyAccountAsked: false
         month: November
         period:
           from: "2026-11-01T00:00"
@@ -714,6 +730,11 @@ evals:
             perDayLeft: 376.19
             projected: 12300
             daysLeft: 21
+            byAccount:
+              - name: Black card UAH
+                spent: 2900
+              - name: White card UAH
+                spent: 1200
           - id: budget-taxi
             name: Taxi
             categories: ["Taxi"]
@@ -725,6 +746,11 @@ evals:
             perDayLeft: 0
             projected: 5460
             daysLeft: 21
+            byAccount:
+              - name: Black card UAH
+                spent: 1240
+              - name: White card UAH
+                spent: 580
         incomplete: false
         presets: ["Cafes & Restaurants", "Groceries", "Taxi", "Transport", "Car", "Health", "Clothes & Shoes", "Subscriptions & Games", "Entertainment", "Beauty", "Pets"]
     expected:
@@ -745,7 +771,7 @@ evals:
           name: Таксі
           categories: ["Taxi"]
           limit: 5000
-        note: The user can see it in "Show Budgets" and in the Summary of "Show Statement" for This Month.
+        note: Budgets count the cards chosen in "Show Budgets", together. The user can see it there and in the Summary of "Show Statement" for This Month.
     expected:
       - callsTool:
           name: set-budget

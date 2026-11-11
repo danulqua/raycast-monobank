@@ -3,6 +3,12 @@ import { Cached } from "../services/storage";
 import { useLocalStorage } from "./useLocalStorage";
 
 /**
+ * Fetches started in this command, by key and scope. Views that mount together (e.g. the statement and the
+ * budget accounts in "Show Statement") share one request instead of each spending the rate limit.
+ */
+const pendingFetches = new Map<string, { promise: Promise<unknown>; startedAt: number }>();
+
+/**
  * Data cached in LocalStorage and refetched once the cache is older than `ttl`.
  * On a failed fetch the cached data is kept, and `lastUpdated` is still bumped so
  * the next attempt waits for another `ttl`, unless `shouldRetryNextLaunch(error)` returns true.
@@ -40,7 +46,14 @@ export function usePersistedResource<T extends object>(options: {
     setIsFetching(true);
     setError(undefined);
 
-    fetch(data)
+    const fetchKey = `${key}|${scope ?? ""}`;
+    let pending = pendingFetches.get(fetchKey);
+    if (!pending || now - pending.startedAt > ttl) {
+      pending = { promise: fetch(data), startedAt: now };
+      pendingFetches.set(fetchKey, pending);
+    }
+
+    (pending.promise as Promise<T>)
       .then((fresh) => setData({ ...fresh, lastUpdated: now, scope }))
       .catch((error) => {
         console.error(error);

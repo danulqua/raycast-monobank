@@ -17,7 +17,14 @@ import { join, parse } from "node:path";
 import { useEffect, useMemo, useState } from "react";
 import { TokenError } from "../../api/monobank";
 import { STATEMENT_SELECTION_TTL, STORAGE_KEYS } from "../../data/constants";
-import { useBudgets, useRecentValue, useStatement, useStatementAccount } from "../../hooks";
+import {
+  useBudgetAccounts,
+  useBudgetStatements,
+  useBudgets,
+  useRecentValue,
+  useStatement,
+  useStatementAccount,
+} from "../../hooks";
 import { AccountOrJar, Period, SavedPeriod } from "../../types";
 import {
   DEFAULT_PERIOD,
@@ -102,14 +109,26 @@ function StatementList(props: {
   const days = useMemo(() => groupByDay(filtered), [filtered]);
   const summary = useMemo(() => summarize(filtered, account?.currency), [filtered, account?.currency]);
 
-  // Budgets count UAH accounts for a calendar month, from every loaded transaction, whatever the search.
+  // Budgets count the budget accounts for a calendar month, from every loaded transaction, whatever the search.
+  // They show only on a budget account: this one's live transactions plus the stored ones of the others.
   const { budgets } = useBudgets();
-  const isUah = account?.currency.code === "UAH";
-  const budgetMonth = useMemo(() => (isUah ? getBudgetMonth(period) : undefined), [isUah, period]);
-  const budgetProgress = useMemo(
-    () => (budgetMonth ? getBudgetProgress(budgets, transactions, budgetMonth) : []),
-    [budgets, transactions, budgetMonth],
+  const budgetAccounts = useBudgetAccounts();
+  const isBudgetAccount = !!account && !!budgetAccounts.accounts?.some((item) => item.id === account.id);
+  const budgetMonth = useMemo(() => (isBudgetAccount ? getBudgetMonth(period) : undefined), [isBudgetAccount, period]);
+  const otherBudgetAccounts = useMemo(
+    () => budgetAccounts.accounts?.filter((item) => item.id !== account?.id),
+    [budgetAccounts.accounts, account?.id],
   );
+  // Stored data only: the Summary never spends the rate limit on other cards.
+  const otherStatements = useBudgetStatements(otherBudgetAccounts, budgetMonth && period, { sync: false });
+  const budgetProgress = useMemo(() => {
+    if (!budgetMonth || !account) return [];
+    const groups = [
+      { accountId: account.id, transactions },
+      ...otherStatements.groups.map((group) => ({ accountId: group.account.id, transactions: group.transactions })),
+    ];
+    return getBudgetProgress(budgets, groups, budgetMonth);
+  }, [budgets, transactions, otherStatements.groups, budgetMonth, account?.id]);
 
   const accountTitle = account ? getStatementItemTitle(account) : undefined;
   const cashbackType = account && isAccount(account) ? account.cashbackType : undefined;
@@ -140,7 +159,7 @@ function StatementList(props: {
     onRefresh: statement.refresh,
     onToggleDetails: () => setIsShowingDetail((isShowingDetail) => !isShowingDetail),
     // "Manage Budgets…" loads its own month: the statement's period may not be one.
-    budgets: { account, initialMonth: isPreset(period) && period.preset === "lastMonth" ? "lastMonth" : "thisMonth" },
+    budgets: { initialMonth: isPreset(period) && period.preset === "lastMonth" ? "lastMonth" : "thisMonth" },
   };
 
   function renderEmptyView() {
@@ -191,7 +210,9 @@ function StatementList(props: {
           totalCount={transactions.length}
           budgetProgress={budgetProgress}
           budgetMonth={budgetMonth}
-          isPartial={hasMore}
+          budgetCardCount={(otherBudgetAccounts?.length ?? 0) + 1}
+          otherCardsSyncedAt={otherStatements.oldestSyncedAt}
+          isPartial={hasMore || otherStatements.isPartial}
           statement={statementActions}
         />
       )}

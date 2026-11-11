@@ -1,7 +1,7 @@
 import { Color, Image } from "@raycast/api";
 import { BUDGET_WARNING_RATIO } from "../data/constants";
-import { Budget, Period, Transaction } from "../types";
-import { getProgressRing, progressColors } from "./accounts";
+import { Account, AccountOrJar, AccountType, Budget, Period, Transaction } from "../types";
+import { getProgressRing, getStatementItemTitle, isAccount, progressColors } from "./accounts";
 import { formatCurrency } from "./currency";
 import { isPreset } from "./statement";
 
@@ -30,6 +30,8 @@ export interface BudgetProgress {
   status: BudgetStatus;
   /** Net spending per category, in the budget's order. */
   categories: { name: string; spent: number }[];
+  /** Net spending per account, in the order of the groups passed; accounts with none are left out. */
+  byAccount: { accountId: string; spent: number }[];
   /** Current month only: what's left per day, today included. */
   perDayLeft?: number;
   /** Current month only: the spending by the end of the month at the pace so far. */
@@ -63,22 +65,35 @@ export function getBudgetStatus(ratio: number): BudgetStatus {
   return "ok";
 }
 
+/** The transactions of one budget account. */
+export interface BudgetTransactionGroup {
+  accountId: string;
+  transactions: Transaction[];
+}
+
 /**
- * How much of each budget is spent in `month`. Pass all loaded transactions of the month, not the ones a search
- * matched. Holds count; positive transactions in a budget's categories (refunds) reduce its spending.
+ * How much of each budget is spent in `month`, across every group. Pass all loaded transactions of the month, not
+ * the ones a search matched. Holds count; positive transactions in a budget's categories (refunds) reduce its
+ * spending.
  */
 export function getBudgetProgress(
   budgets: Budget[],
-  transactions: Transaction[],
+  groups: BudgetTransactionGroup[],
   month: BudgetMonth,
   now = new Date(),
 ): BudgetProgress[] {
   const spentByCategory = new Map<string, number>();
-  for (const transaction of transactions) {
-    if (transaction.time < month.from || transaction.time > month.to) continue;
-    const { name } = transaction.category;
-    spentByCategory.set(name, (spentByCategory.get(name) ?? 0) - transaction.amount);
-  }
+  // Per account, then per category.
+  const spentByAccount = groups.map(({ accountId, transactions }) => {
+    const byCategory = new Map<string, number>();
+    for (const transaction of transactions) {
+      if (transaction.time < month.from || transaction.time > month.to) continue;
+      const { name } = transaction.category;
+      byCategory.set(name, (byCategory.get(name) ?? 0) - transaction.amount);
+      spentByCategory.set(name, (spentByCategory.get(name) ?? 0) - transaction.amount);
+    }
+    return { accountId, byCategory };
+  });
 
   const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
   const daysElapsed = now.getDate();
@@ -92,6 +107,12 @@ export function getBudgetProgress(
     );
     const left = budget.limit - spent;
     const ratio = budget.limit > 0 ? spent / budget.limit : 0;
+    const byAccount = spentByAccount
+      .map(({ accountId, byCategory }) => ({
+        accountId,
+        spent: budget.categories.reduce((sum, name) => sum + (byCategory.get(name) ?? 0), 0),
+      }))
+      .filter((account) => account.spent !== 0);
 
     return {
       budget,
@@ -100,6 +121,7 @@ export function getBudgetProgress(
       ratio,
       status: getBudgetStatus(ratio),
       categories,
+      byAccount,
       ...(month.isCurrent && {
         perDayLeft: Math.max(left, 0) / daysLeft,
         projected: (spent / daysElapsed) * daysInMonth,
@@ -107,6 +129,26 @@ export function getBudgetProgress(
       }),
     };
   });
+}
+
+/** Whether budgets can count `item`: a card or FOP account in UAH. Jars and USD/EUR cards never count. */
+export function isBudgetEligible(item: AccountOrJar): item is Account {
+  return isAccount(item) && item.currency.code === "UAH";
+}
+
+/** Whether budgets count `account` until the user chooses: personal UAH cards, not FOP or eAid accounts. */
+export function isDefaultBudgetAccount(account: AccountOrJar) {
+  return isBudgetEligible(account) && account.type !== AccountType.FOP && account.type !== AccountType.EAID;
+}
+
+/**
+ * The accounts budgets count, in `items` order: the default ones without `savedIds`, else the eligible ones saved.
+ * Saved ids of accounts that no longer exist are ignored.
+ */
+export function resolveBudgetAccounts(items: AccountOrJar[], savedIds?: string[]): Account[] {
+  if (!savedIds) return items.filter(isDefaultBudgetAccount) as Account[];
+  const ids = new Set(savedIds);
+  return items.filter((item): item is Account => isBudgetEligible(item) && ids.has(item.id));
 }
 
 const statusColors = {
@@ -165,4 +207,23 @@ export function parseBudgetLimit(text: string): number | undefined {
 
   const value = Math.round(Number(cleaned) * 100) / 100;
   return value > 0 ? value : undefined;
+}
+
+/** E.g. "3 cards", or the card's title when there's one, e.g. "Black *0001". */
+export function formatBudgetAccounts(accounts: AccountOrJar[]) {
+  return accounts.length === 1 ? getStatementItemTitle(accounts[0]) : `${accounts.length} cards`;
+}
+
+/** Whether `syncedAt` (unix ms) is since the start of today. */
+export function isSyncedToday(syncedAt: number, now = new Date()) {
+  return syncedAt >= new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+}
+
+/** When a statement was last synced, e.g. "updated 14:05", "updated 10 Nov, 14:05", or "not updated yet". */
+export function formatSyncTime(syncedAt: number, now = new Date()) {
+  if (!syncedAt) return "not updated yet";
+  const date = new Date(syncedAt);
+  const time = date.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
+  if (isSyncedToday(syncedAt, now)) return `updated ${time}`;
+  return `updated ${date.toLocaleDateString("en-GB", { day: "numeric", month: "short" })}, ${time}`;
 }
