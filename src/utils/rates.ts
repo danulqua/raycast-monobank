@@ -1,4 +1,4 @@
-import { List } from "@raycast/api";
+import { Color, List } from "@raycast/api";
 import { USD_UAH_RATE_ID } from "../data/constants";
 import { Currency, CurrencyRate, RatesSnapshot } from "../types";
 
@@ -38,13 +38,14 @@ export function getRateMenuBarTitle(rate: CurrencyRate, mode: RateMenuBarTitle, 
   return `${rate.rateSell ?? "–"}${suffix}`;
 }
 
-/** With `previous`, the change since that day comes first. */
+/** With `previous`, the change since that day comes first, green when the rate went up and red when it went down. */
 export function getRateAccessories(rate: CurrencyRate, previous?: RatesSnapshot): List.Item.Accessory[] {
   const change = getRateChange(rate, previous);
   const name: List.Item.Accessory = { text: `${rate.currencyA.name} – ${rate.currencyB.name}` };
   if (!change || !previous) return [name];
 
-  return [{ text: formatRateChange(change.delta), tooltip: formatRateChangeTooltip(change, previous.day) }, name];
+  const text = { value: formatRateChange(change.delta), color: change.delta > 0 ? Color.Green : Color.Red };
+  return [{ text, tooltip: formatRateChangeTooltip(change, previous.day) }, name];
 }
 
 export type RateField = "sell" | "buy" | "cross";

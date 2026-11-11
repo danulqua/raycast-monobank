@@ -1,6 +1,6 @@
 # monobank Changelog
 
-## [AI Support, Show Statement Command and Improvements] - {PR_MERGE_DATE}
+## [AI, Statements, Budgets, Subscriptions, Menu Bar and Currency Converter] - {PR_MERGE_DATE}
 
 - Added the "Currency Rate Menu Bar" command (macOS): a currency rate in the menu bar, with your pinned rates and all other rates in its menu. Choose the rate there, or with "Show in Menu Bar" (`⌘ ⇧ M`) in "Show Currency Rates", and choose whether the title shows the sell rate, the buy rate, both or only the flag
 - Added the "Jar Progress Menu Bar" command (macOS): a jar's progress in the menu bar, with your other jars in its menu, and links to their top-up pages. Choose the jar there, or with "Show in Menu Bar" (`⌘ ⇧ M`) in "Show Accounts", and choose whether the title shows the percentage, the balance, the balance and goal, or nothing
@@ -24,7 +24,7 @@
 - In "Change Period", the error for a custom range longer than 31 days shows as you pick the dates, with the latest end date that fits
 - Added a "Convert Currency" action (`⌘ O`) in "Show Currency Rates". It converts both ways, using the sell rate when you buy a currency and the buy rate when you sell it
 - Added the "Convert Currency" command: type e.g. `Convert 100 usd` or `250 eur pln` in Raycast to see the result right away, with currency symbols and Ukrainian names (`$`, `€`, `грн`, `доларів`) understood
-- "Show Currency Rates" and "Currency Rate Menu Bar" show how much each rate changed since the previous day, e.g. `↑ 0.12`. Turn on "Change in Title" to also show it in the menu bar title
+- "Show Currency Rates" and "Currency Rate Menu Bar" show how much each rate changed since the previous day, e.g. `↑ 0.12`, in green or red in "Show Currency Rates". Turn on "Change in Title" to also show it in the menu bar title
 - Added "Copy Requisites" (`⌘ ⇧ R`) and "Copy Requisites in English" in "Show Accounts": an account's recipient, IBAN, tax ID and bank details for an invoice or a transfer. Set your full name and tax ID in the extension preferences
 - "Currency Rate Menu Bar" now refreshes every 2 hours and when its menu is opened, and "Show Currency Rates" refetches rates older than 30 minutes instead of 24 hours
 - Updated dependencies to the latest Raycast API
