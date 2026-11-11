@@ -2,6 +2,8 @@
 
 View currency rates, all your accounts and their transactions in monobank, set monthly budgets per category, see your subscriptions, keep a rate, a jar or your next subscription charge in the menu bar, and ask AI about them.
 
+> This is an unofficial, personal project built on the [monobank open API](https://api.monobank.ua/docs/). It is not affiliated with, endorsed by or supported by mono. For help with your monobank account, contact monobank directly.
+
 ## Setup
 
 The access token is required for the "Show Accounts", "Show Statement", "Show Budgets", "Show Subscriptions", "Sync Statements", "Jar Progress Menu Bar" and "Subscriptions Menu Bar" commands and for AI questions about your accounts, transactions, budgets and subscriptions. "Show Currency Rates" and currency questions work without it. To create an access token:
