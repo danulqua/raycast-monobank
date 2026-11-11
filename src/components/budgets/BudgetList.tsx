@@ -103,7 +103,9 @@ export default function BudgetList(props: {
 
   return (
     <List
-      isLoading={isLoading || isLoadingBudgets}
+      // Raycast hides the empty view while loading, so a statement sync (minutes with the rate limit) would hide
+      // "Create Budget" when there are no budgets yet. Its toast still shows the progress.
+      isLoading={isLoadingBudgets || (budgets.length > 0 && isLoading)}
       isShowingDetail={isShowingDetail && budgets.length > 0}
       navigationTitle={sectionTitle ? `Budgets · ${sectionTitle}` : "Budgets"}
       searchBarPlaceholder="Search budgets"
