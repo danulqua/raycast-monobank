@@ -1,10 +1,10 @@
 # monobank
 
-View currency rates, all your accounts and their transactions in monobank, set monthly budgets per category, see your subscriptions, keep a rate or a jar in the menu bar, and ask AI about them.
+View currency rates, all your accounts and their transactions in monobank, set monthly budgets per category, see your subscriptions, keep a rate, a jar or your next subscription charge in the menu bar, and ask AI about them.
 
 ## Setup
 
-The access token is required for the "Show Accounts", "Show Statement", "Show Budgets", "Show Subscriptions", "Sync Statements" and "Jar Progress Menu Bar" commands and for AI questions about your accounts, transactions, budgets and subscriptions. "Show Currency Rates" and currency questions work without it. To create an access token:
+The access token is required for the "Show Accounts", "Show Statement", "Show Budgets", "Show Subscriptions", "Sync Statements", "Jar Progress Menu Bar" and "Subscriptions Menu Bar" commands and for AI questions about your accounts, transactions, budgets and subscriptions. "Show Currency Rates" and currency questions work without it. To create an access token:
 
 1. Visit https://api.monobank.ua/
 2. Authenticate with your account
@@ -54,7 +54,13 @@ Choose the jar in the title by clicking another jar in the menu, or with "Show i
 
 The "Menu Bar Title" preference sets what's shown next to the icon: the percentage (default), the balance, the balance and goal, or nothing. Jars without a goal show their balance.
 
-Both menu bar commands are macOS only. The rate refreshes every 2 hours, and when you open its menu if the rates are older than 30 minutes. The jar refreshes every 10 minutes. When monobank can't be reached, they keep showing the last loaded data and say when it was loaded.
+## Subscriptions Menu Bar
+
+Keeps your next subscription charge in the macOS menu bar, e.g. `Netflix · tomorrow`. Click it to see the monthly total and all your subscriptions, grouped like in "Show Subscriptions": Upcoming, Active and Possibly Cancelled, each with its amount and next expected date. Click a subscription to open it in "Show Subscriptions", or hold `⌥` to copy its amount.
+
+The "Menu Bar Title" preference sets what's shown next to the icon: the next charge (default), the next charge with its price (e.g. `Netflix · 349 ₴ · tomorrow`), the monthly total in UAH, how many charges are due in the next 7 days, or nothing. It reads the history "Sync Statements" stores, so it makes no statement requests, and renaming or hiding a subscription updates it right away.
+
+The menu bar commands are macOS only. The rate refreshes every 2 hours, and when you open its menu if the rates are older than 30 minutes. The jar refreshes every 10 minutes, and the subscriptions every hour. When monobank can't be reached, they keep showing the last loaded data and say when it was loaded.
 
 ## Show Statement
 

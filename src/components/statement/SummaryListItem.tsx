@@ -1,10 +1,12 @@
 import { ActionPanel, Color, Icon, List } from "@raycast/api";
 import { roundAmount } from "../../services/format";
+import { TimeRange } from "../../services/statement";
 import {
   BudgetMonth,
   BudgetProgress,
   formatAmount,
   formatBudgetPercentage,
+  formatDateRange,
   formatHryvnias,
   formatSpentOfLimit,
   formatSyncTime,
@@ -37,8 +39,10 @@ export default function SummaryListItem(props: {
   budgetCardCount: number;
   /** Unix milliseconds of the least recent sync among the other budget cards, if there are any. */
   otherCardsSyncedAt?: number;
-  /** Whether the month has transactions that aren't loaded on any budget card, so budgets may be undercounted. */
-  isPartial: boolean;
+  /** The newest part of the period that isn't loaded on this card, so the totals don't cover it. */
+  missing?: TimeRange;
+  /** Whether the month has transactions that aren't loaded on another budget card, so budgets may be undercounted. */
+  isOtherCardsPartial: boolean;
   statement: StatementActionsProps;
 }) {
   const {
@@ -50,7 +54,8 @@ export default function SummaryListItem(props: {
     budgetMonth,
     budgetCardCount,
     otherCardsSyncedAt,
-    isPartial,
+    missing,
+    isOtherCardsPartial,
     statement,
   } = props;
   const { currency } = summary;
@@ -69,6 +74,7 @@ export default function SummaryListItem(props: {
   const isSearching = searchText.length > 0;
   const budgetAlert = getBudgetAlert(budgetProgress);
   const budgetCards = budgetCardCount === 1 ? "" : ` · ${budgetCardCount} cards`;
+  const notLoaded = missing && `Not loaded: ${formatDateRange(missing.from, missing.to)}`;
   const otherCardsUpdated =
     otherCardsSyncedAt !== undefined && !isSyncedToday(otherCardsSyncedAt)
       ? formatSyncTime(otherCardsSyncedAt)
@@ -93,6 +99,7 @@ export default function SummaryListItem(props: {
               },
             ]
           : []),
+        ...(notLoaded ? [{ icon: { source: Icon.Warning, tintColor: Color.Orange }, tooltip: notLoaded }] : []),
         { text: isSearching ? `${summary.count} of ${totalCount} transactions` : `${totalCount} transactions` },
       ]}
       detail={
@@ -124,6 +131,13 @@ export default function SummaryListItem(props: {
                 <Metadata.Label key={`cashback:${cashback}`} title="Cashback" text={cashback} />
               )}
               <Metadata.Label key={`count:${count}`} title="Transactions" text={count} />
+              {notLoaded && (
+                <Metadata.Label
+                  key={`partial:${notLoaded}`}
+                  title="Partial"
+                  text={{ value: notLoaded, color: Color.Orange }}
+                />
+              )}
 
               {budgetMonth && budgetProgress.length > 0 && (
                 <>
@@ -132,7 +146,9 @@ export default function SummaryListItem(props: {
                     key={`budgets:${budgetMonth.label}:${budgetCards}:${isSearching}`}
                     title={`Budgets · ${budgetMonth.label}${budgetCards}${isSearching ? " (whole month)" : ""}`}
                   />
-                  {isPartial && <Metadata.Label title="Partial" text="Older transactions not loaded" />}
+                  {isOtherCardsPartial && (
+                    <Metadata.Label title="Partial" text="Other cards: older transactions not loaded" />
+                  )}
                   {otherCardsUpdated && (
                     <Metadata.Label
                       key={`otherCards:${otherCardsUpdated}`}

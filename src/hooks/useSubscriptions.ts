@@ -1,5 +1,6 @@
 import { Toast, showToast } from "@raycast/api";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { refreshMenuBar } from "../services/menuBar";
 import { getHistoryCutoff } from "../services/statement";
 import {
   SubscriptionOverridePatch,
@@ -50,11 +51,13 @@ export function useSubscriptionOverrides() {
   const update = useCallback(async (key: string, patch: SubscriptionOverridePatch) => {
     await updateSubscriptionOverride(key, patch);
     listeners.forEach((listener) => listener());
+    await refreshMenuBar("subscriptions-menu-bar");
   }, []);
 
   const restore = useCallback(async (chargeId: string) => {
     await restorePriceChange(chargeId);
     listeners.forEach((listener) => listener());
+    await refreshMenuBar("subscriptions-menu-bar");
   }, []);
 
   return { overrides, isLoading, update, restorePriceChange: restore };

@@ -8,11 +8,13 @@ import {
   getPeriodGaps,
   getPeriodItems,
   planRequest,
+  TimeRange,
   readStoredStatement,
   saveResponse,
 } from "../services/statement";
+import { STATEMENT_PAGE_SIZE } from "../data/constants";
 import { AccountOrJar, Period } from "../types";
-import { resolvePeriod } from "../utils/statement";
+import { formatDateRange, resolvePeriod } from "../utils/statement";
 import { CancelledError, withRateLimit } from "./rateLimit";
 import { useJarTitles } from "./useClientInfo";
 import { notifyStatementsChanged, subscribeToStatements } from "./useAccountStatements";
@@ -119,6 +121,25 @@ export function useStatement(account: AccountOrJar | undefined, period: Period |
         const next = await saveResponse(account.id, request, page, Date.now());
         if (accountId.current === account.id) setStored({ accountId: account.id, statement: next });
         notifyStatementsChanged(account.id);
+
+        // Says how far it got, since the totals don't cover the period yet.
+        const gap = isCurrent() ? getPeriodGaps(next, resolvedPeriod, Date.now())[0] : undefined;
+        if (gap) {
+          const limit = page.length >= STATEMENT_PAGE_SIZE ? "up to 500 transactions" : "up to 31 days";
+          showToast({
+            style: Toast.Style.Failure,
+            title: "Not all transactions loaded",
+            message: `${formatDateRange(gap.from, gap.to)} isn't loaded yet. monobank sends ${limit} at a time.`,
+            primaryAction: {
+              title: "Load Older Transactions",
+              onAction: (toast) => {
+                toast.hide();
+                // The latest `load`, so it plans from the statement this load just stored.
+                loadRef.current("older");
+              },
+            },
+          });
+        }
       } catch (error) {
         if (error instanceof CancelledError || !isCurrent()) return;
 
@@ -142,6 +163,8 @@ export function useStatement(account: AccountOrJar | undefined, period: Period |
     },
     [token, account?.id, resolvedPeriod, statement],
   );
+  const loadRef = useRef(load);
+  loadRef.current = load;
 
   // Loads what the account and period need when either changes.
   useEffect(() => {
@@ -157,8 +180,9 @@ export function useStatement(account: AccountOrJar | undefined, period: Period |
     return getPeriodItems(statement, resolvedPeriod).map((item) => toTransaction(item, account.currency, jarTitles));
   }, [account, statement, resolvedPeriod, tokenError, jarTitles]);
 
-  const hasGaps = useMemo(
-    () => !!statement && !!resolvedPeriod && getPeriodGaps(statement, resolvedPeriod, Date.now()).length > 0,
+  // The newest part of the period that isn't loaded: "Load Older Transactions" loads it next.
+  const missing = useMemo<TimeRange | undefined>(
+    () => (statement && resolvedPeriod ? getPeriodGaps(statement, resolvedPeriod, Date.now())[0] : undefined),
     [statement, resolvedPeriod],
   );
 
@@ -170,7 +194,9 @@ export function useStatement(account: AccountOrJar | undefined, period: Period |
     error,
     tokenError,
     /** Whether the period has older transactions that aren't loaded yet. */
-    hasMore: !tokenError && !isFetching && hasGaps,
+    hasMore: !tokenError && !isFetching && !!missing,
+    /** The newest part of the period that isn't loaded yet (unix seconds), while `hasMore`. */
+    missing: !tokenError && !isFetching ? missing : undefined,
     loadOlder: useCallback(() => load("older"), [load]),
     refresh: useCallback(() => load("refresh"), [load]),
     /** Seconds left until the rate limit allows the next request, or 0 when not waiting. */

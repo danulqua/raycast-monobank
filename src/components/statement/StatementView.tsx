@@ -31,6 +31,7 @@ import {
   DEFAULT_PERIOD,
   filterTransactions,
   formatAmount,
+  formatDateRange,
   getBudgetMonth,
   getBudgetProgress,
   getCsvFileName,
@@ -98,7 +99,8 @@ function StatementList(props: {
 
   // Waits for the saved period, so the default one isn't fetched (and the rate limit spent) by mistake.
   const statement = useStatement(account, isLoadingPeriod ? undefined : period);
-  const { transactions, hasMore } = statement;
+  const { transactions, hasMore, missing } = statement;
+  const missingText = missing && formatDateRange(missing.from, missing.to);
   const tokenError = accountsTokenError ?? statement.tokenError;
 
   useEffect(() => {
@@ -173,7 +175,7 @@ function StatementList(props: {
     await showToast({
       style: Toast.Style.Success,
       title: `Exported ${transactions.length} transactions`,
-      message: hasMore ? "Older transactions in the period weren't loaded" : undefined,
+      message: missingText ? `${missingText} wasn't loaded` : undefined,
     });
   }
 
@@ -243,7 +245,8 @@ function StatementList(props: {
           budgetMonth={budgetMonth}
           budgetCardCount={(otherBudgetAccounts?.length ?? 0) + 1}
           otherCardsSyncedAt={otherStatements.oldestSyncedAt}
-          isPartial={hasMore || otherStatements.isPartial}
+          missing={missing}
+          isOtherCardsPartial={otherStatements.isPartial}
           statement={statementActions}
         />
       )}
@@ -273,8 +276,8 @@ function StatementList(props: {
           id="load-older"
           icon={{ source: Icon.ArrowDown, tintColor: Color.SecondaryText }}
           title="Load Older Transactions"
-          subtitle="monobank sends up to 500 at a time"
-          detail={<List.Item.Detail markdown="Load the next 500 transactions of this period." />}
+          subtitle={missingText && `Not loaded: ${missingText}`}
+          detail={<List.Item.Detail markdown={LOAD_OLDER_MARKDOWN} />}
           actions={
             <ActionPanel>
               <Action title="Load Older Transactions" icon={Icon.ArrowDown} onAction={statement.loadOlder} />
@@ -286,6 +289,10 @@ function StatementList(props: {
     </List>
   );
 }
+
+const LOAD_OLDER_MARKDOWN =
+  "The totals above don't include the transactions not loaded yet. monobank sends up to 500 transactions, " +
+  "or 31 days, per request, so this loads the next part of the period.";
 
 /** What the Subscription tag is found by, in English and Ukrainian. */
 const SUBSCRIPTION_SEARCH_TEXTS = ["Subscription", "Підписка"];

@@ -20,6 +20,8 @@ import {
   SubscriptionSource,
   Transaction,
 } from "../types";
+import { formatHryvnias } from "./budgets";
+import { formatAmount, formatCurrency } from "./currency";
 import { normalizeCategoryText } from "./mcc";
 import { costOf } from "./rates";
 import { isSavings } from "./savings";
@@ -505,8 +507,11 @@ export function getSubscriptionTitle(subscription: Subscription) {
   return subscription.customName || subscription.name;
 }
 
+/** What `isUpcoming` and `formatNextDate` need, so slimmer copies of a subscription work too. */
+type ScheduledCharge = Pick<Subscription, "status" | "nextDate">;
+
 /** Whether an active subscription is expected within `SUBSCRIPTION_UPCOMING_DAYS`, or a few days late. */
-export function isUpcoming(subscription: Subscription, now = new Date()) {
+export function isUpcoming(subscription: ScheduledCharge, now = new Date()) {
   if (subscription.status !== "active") return false;
   return daysBetween(startOfDay(now), toDay(subscription.nextDate)) <= SUBSCRIPTION_UPCOMING_DAYS;
 }
@@ -517,7 +522,7 @@ export function formatCadence(cadence: SubscriptionCadence) {
 }
 
 /** E.g. "today", "tomorrow", "in 3 days", "12 Dec", or "expected 5 Nov" once the date has passed. */
-export function formatNextDate(subscription: Subscription, now = new Date()) {
+export function formatNextDate(subscription: ScheduledCharge, now = new Date()) {
   const next = toDay(subscription.nextDate);
   const days = daysBetween(startOfDay(now), next);
   const date = formatDate(next, { year: next.getFullYear() !== now.getFullYear() });
@@ -535,6 +540,51 @@ export function formatSubscriptionSummary(subscription: Subscription, now = new 
   const when =
     subscription.status === "late" ? "possibly cancelled" : next.startsWith("expected") ? next : `next charge ${next}`;
   return [getSubscriptionTitle(subscription), formatCadence(subscription.cadence), when].join(" · ");
+}
+
+/** What "Subscriptions Menu Bar" shows next to the icon (its "Menu Bar Title" preference). */
+export type SubscriptionMenuBarTitle = "nextCharge" | "nextChargeAndPrice" | "monthlyTotal" | "upcomingCount" | "none";
+
+/** Longer names are cut in the menu bar title, which has little room. */
+const MENU_BAR_NAME_LENGTH = 20;
+
+/**
+ * The menu bar title, or undefined to show only the icon: the active subscription charged next, e.g.
+ * "Netflix · tomorrow" or "Netflix · 349 ₴ · tomorrow" with its price, the monthly total in UAH, or how many are
+ * upcoming.
+ */
+export function getSubscriptionMenuBarTitle(
+  subscriptions: (ScheduledCharge & Pick<Subscription, "amount" | "currency"> & { title: string })[],
+  monthlyTotal: number | undefined,
+  mode: SubscriptionMenuBarTitle,
+  now = new Date(),
+) {
+  const active = subscriptions.filter((subscription) => subscription.status === "active");
+
+  if (mode === "nextCharge" || mode === "nextChargeAndPrice") {
+    const next = active.reduce<(typeof active)[number] | undefined>(
+      (earliest, subscription) => (!earliest || subscription.nextDate < earliest.nextDate ? subscription : earliest),
+      undefined,
+    );
+    if (!next) return undefined;
+    const name =
+      next.title.length > MENU_BAR_NAME_LENGTH
+        ? `${next.title.slice(0, MENU_BAR_NAME_LENGTH - 1).trimEnd()}…`
+        : next.title;
+    // Whole prices without decimals, e.g. "349 ₴", since the title has little room.
+    const price = Number.isInteger(next.amount)
+      ? formatCurrency(next.amount, next.currency.code, 0)
+      : formatAmount(next.amount, next.currency);
+    return [name, mode === "nextChargeAndPrice" && price, formatNextDate(next, now)].filter(Boolean).join(" · ");
+  }
+  if (mode === "monthlyTotal") {
+    return monthlyTotal !== undefined && active.length ? `≈ ${formatHryvnias(monthlyTotal)}/mo` : undefined;
+  }
+  if (mode === "upcomingCount") {
+    const count = active.filter((subscription) => isUpcoming(subscription, now)).length;
+    return count ? String(count) : undefined;
+  }
+  return undefined;
 }
 
 /** The "Subscription" tag on a statement charge of `subscription`. */

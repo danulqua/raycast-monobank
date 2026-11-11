@@ -105,7 +105,14 @@ export interface StoredSubscriptions {
  * requests: "Sync Statements" keeps the history up to date. Token problems become errors the AI can explain.
  */
 export async function loadStoredSubscriptions(now = Date.now()): Promise<StoredSubscriptions> {
-  const loaded = await loadClientInfo();
+  return detectStoredSubscriptions(await loadClientInfo(), now);
+}
+
+/** The subscriptions in the stored statements of the cards and FOP accounts in `loaded`. Reads storage only. */
+export async function detectStoredSubscriptions(
+  loaded: LoadedClientInfo,
+  now = Date.now(),
+): Promise<StoredSubscriptions> {
   const accounts = loaded.items.filter(isAccount);
   const jarTitles = getJarTitles(loaded.clientInfo.jars);
   const period = { from: getHistoryCutoff(now) };
