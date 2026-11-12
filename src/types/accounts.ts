@@ -45,6 +45,11 @@ export type AccountOrJar = Account | Jar;
 export interface ClientInfo {
   /** The owner's name as monobank has it, e.g. "Шевченко Тарас" (no patronymic). Missing in caches from older versions. */
   name?: string;
+  /**
+   * Fingerprint of monobank's `clientId` (see `getClientFingerprint`), so a new token of the same person keeps the
+   * stored data. Missing in caches from older versions.
+   */
+  ownerId?: string;
   accounts: Account[];
   jars: Jar[];
   /**

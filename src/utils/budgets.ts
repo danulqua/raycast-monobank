@@ -184,6 +184,31 @@ export function formatSpentOfLimit(progress: BudgetProgress) {
   return `${Math.round(progress.spent).toLocaleString("uk-UA")} / ${formatHryvnias(progress.budget.limit)}`;
 }
 
+/** An amount to paste elsewhere, e.g. "1234.50": no symbol or spaces. */
+export function formatPlainHryvnias(amount: number) {
+  return amount.toFixed(2);
+}
+
+/**
+ * A budget in one line, to share, e.g. "Cafes, November: 3 766 / 5 000 ₴ (75%), 1 234 ₴ left, ≈ 62 ₴ a day for
+ * 20 days". Before its spending is loaded, only the limit and categories: "Cafes: 5 000 ₴ a month for Bars, Fast Food".
+ */
+export function formatBudgetSummary(budget: Budget, progress?: BudgetProgress, month?: BudgetMonth) {
+  if (!progress) {
+    return `${budget.name}: ${formatHryvnias(budget.limit)} a month for ${budget.categories.join(", ")}`;
+  }
+
+  const { left, perDayLeft, daysLeft } = progress;
+  const parts = [
+    `${formatSpentOfLimit(progress)} (${formatBudgetPercentage(progress)})`,
+    left < 0 ? `over by ${formatHryvnias(-left)}` : `${formatHryvnias(left)} left`,
+  ];
+  if (left > 0 && perDayLeft !== undefined && daysLeft !== undefined) {
+    parts.push(`≈ ${formatHryvnias(perDayLeft)} a day for ${daysLeft} ${daysLeft === 1 ? "day" : "days"}`);
+  }
+  return `${month ? `${budget.name}, ${month.label}` : budget.name}: ${parts.join(", ")}`;
+}
+
 /** E.g. "2 budgets over limit", "1 budget near limit", or `undefined` when all are fine. */
 export function getBudgetAlert(progress: BudgetProgress[]): { status: BudgetStatus; text: string } | undefined {
   const over = progress.filter((item) => item.status === "over").length;

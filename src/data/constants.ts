@@ -25,6 +25,22 @@ export const STORAGE_KEYS = {
   subscriptionOverridesLock: `${STORAGE_PREFIX}subscriptionOverrides:lock`,
 } as const;
 
+/**
+ * The data of the person a token belongs to, besides the stored statements and the client info. It's removed when a
+ * token of another person replaces it (see `purgeOwnerData`). `statementRequestedAt` is included, so the old token's
+ * rate limit doesn't hold up the new one. Rates and the rate choices aren't personal, so they're kept.
+ */
+export const PERSONAL_STORAGE_KEYS = [
+  STORAGE_KEYS.pinnedAccounts,
+  STORAGE_KEYS.statementAccount,
+  STORAGE_KEYS.statementPeriod,
+  STORAGE_KEYS.statementRequestedAt,
+  STORAGE_KEYS.menuBarJar,
+  STORAGE_KEYS.budgets,
+  STORAGE_KEYS.budgetAccounts,
+  STORAGE_KEYS.subscriptionOverrides,
+] as const;
+
 /** The stored statement of one account or jar (see `StoredStatement`). */
 export function getStatementKey(accountId: string) {
   return `${STORAGE_PREFIX}statement:${accountId}`;

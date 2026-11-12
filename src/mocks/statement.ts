@@ -686,6 +686,19 @@ export function getMockStatement(
   to: number | undefined,
   now: number,
 ): StatementItemResponse[] | undefined {
+  return collect(accountId, from, to, now, STATEMENT_PAGE_SIZE);
+}
+
+/**
+ * Every transaction of the account or jar from `from` (unix seconds) until `now` (unix ms), newest first, without
+ * the page limit of `getMockStatement`. For `MOCK_CONFIG.prefillStatements`. Undefined for an unknown account.
+ */
+export function getMockHistory(accountId: string, from: number, now: number) {
+  return collect(accountId, from, undefined, now, Infinity);
+}
+
+/** The transactions in `[from, to]`, newest first, at most `limit`. Card purchases of the last two days are holds. */
+function collect(accountId: string, from: number, to: number | undefined, now: number, limit: number) {
   const profile = getProfile(accountId);
   if (!profile) return undefined;
 
@@ -694,7 +707,7 @@ export function getMockStatement(
   const end = Math.min(to ?? nowSeconds, nowSeconds);
   const result: StatementItemResponse[] = [];
 
-  for (let i = items.length - 1; i >= 0 && result.length < STATEMENT_PAGE_SIZE; i--) {
+  for (let i = items.length - 1; i >= 0 && result.length < limit; i--) {
     const item = items[i];
     if (item.time > end) continue;
     if (item.time < from) break;

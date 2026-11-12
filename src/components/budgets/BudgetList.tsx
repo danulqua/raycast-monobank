@@ -9,7 +9,9 @@ import {
   BudgetProgress,
   formatBudgetAccounts,
   formatBudgetPercentage,
+  formatBudgetSummary,
   formatHryvnias,
+  formatPlainHryvnias,
   formatSpentOfLimit,
   formatSyncTime,
   getBudgetColor,
@@ -152,18 +154,24 @@ export default function BudgetList(props: {
               actions={
                 <ActionPanel>
                   <ActionPanel.Section>
+                    <Action.CopyToClipboard title="Copy Summary" content={formatBudgetSummary(budget, item, month)} />
+                    <Action.CopyToClipboard {...getCopyLeftProps(budget, item)} />
+                  </ActionPanel.Section>
+                  <ActionPanel.Section>
                     <Action.Push
                       title="Edit Budget"
                       icon={Icon.Pencil}
+                      shortcut={shortcuts.edit}
                       target={<BudgetForm budget={budget} {...formProps} />}
                     />
+                    {renderCreateActions(false)}
                     <Action
                       title="Toggle Details"
                       icon={Icon.Sidebar}
+                      shortcut={shortcuts.toggleDetails}
                       onAction={() => setIsShowingDetail((value) => !value)}
                     />
                   </ActionPanel.Section>
-                  <ActionPanel.Section>{renderCreateActions(false)}</ActionPanel.Section>
                   <ActionPanel.Section>
                     {index > 0 && (
                       <Action
@@ -305,6 +313,14 @@ function BudgetDetail(props: {
       }
     />
   );
+}
+
+/** What's left to spend, or how much it's over by. Before the spending is loaded, the limit. */
+function getCopyLeftProps(budget: Budget, progress?: BudgetProgress) {
+  if (!progress) return { title: "Copy Limit", content: formatPlainHryvnias(budget.limit) };
+  return progress.left < 0
+    ? { title: "Copy Amount Over", content: formatPlainHryvnias(-progress.left) }
+    : { title: "Copy Amount Left", content: formatPlainHryvnias(progress.left) };
 }
 
 function getAccessories(budget: Budget, progress?: BudgetProgress): List.Item.Accessory[] {

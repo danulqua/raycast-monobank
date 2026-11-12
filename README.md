@@ -33,6 +33,8 @@ The access token is required for the "Show Accounts", "Show Statement", "Show Bu
 3. Click "Activate"
 4. Copy generated access token and paste it into extension preferences
 
+When you replace the token with a new one for the same monobank account, your stored history, custom names, pins, budgets and subscription changes are kept. A token of another person removes them once monobank accepts it, while rates and pinned rates stay. A token monobank rejects changes nothing, so putting the old one back brings everything back.
+
 ## Show Accounts
 
 See all your cards, FOP accounts and jars with their balances, and the total of all of them in UAH at monobank's rates. Filter by type in the search bar, or search by name, currency, card number or IBAN.
@@ -107,7 +109,7 @@ Keeps your next subscription charge in the macOS menu bar, e.g. `Netflix · tomo
 
 ![Subscriptions Menu Bar with the next charge in the title](media/menu-bar-subscriptions.png)
 
-The "Menu Bar Title" preference sets what's shown next to the icon: the next charge (default), the next charge with its price (e.g. `Netflix · 349 ₴ · tomorrow`), the monthly total in UAH, how many charges are due in the next 7 days, or nothing. It reads the history "Sync Statements" stores, so it makes no statement requests, and renaming or hiding a subscription updates it right away.
+The "Menu Bar Title" preference sets what's shown next to the icon: the next charge (default), the next charge with its price (e.g. `Netflix · 349 ₴ · tomorrow`), the monthly total in UAH, how many charges are due in the next 7 days, or nothing. When several are due the same day, the title names the most expensive one and counts the others, e.g. `YouTube (+1) · 780 ₴ · tomorrow`, with their total price; in different currencies, the total is in UAH at monobank's rates, e.g. `≈ 780 ₴`. It reads the history "Sync Statements" stores, so it makes no statement requests, and renaming or hiding a subscription updates it right away.
 
 The menu bar commands are macOS only. The rate refreshes every 2 hours, and when you open its menu if the rates are older than 30 minutes. The jar refreshes every 10 minutes, and the subscriptions every hour. When monobank can't be reached, they keep showing the last loaded data and say when it was loaded.
 
@@ -145,7 +147,7 @@ Set a monthly limit for one or more spending categories, e.g. "Cafes & Restauran
 
   ![Budgets in the Summary of Show Statement](media/statement-budgets.png)
 
-- **Manage**: use "Manage Budgets…" (`⌘ ⇧ U`) in "Show Statement", or the "Show Budgets" command. It shows saved spending right away, then updates the budget accounts not updated in the last 5 minutes, one request a minute. Switch between this and last month with `⌘ ⇧ P`, and see each budget's spending per card in the details. Create a budget from scratch or from a preset (Cafes & Restaurants, Groceries, Taxi, Transport, Car, Health, Clothes & Shoes, Subscriptions & Games, Entertainment, Beauty, Pets), then edit, reorder or delete it.
+- **Manage**: use "Manage Budgets…" (`⌘ ⇧ U`) in "Show Statement", or the "Show Budgets" command. It shows saved spending right away, then updates the budget accounts not updated in the last 5 minutes, one request a minute. Switch between this and last month with `⌘ ⇧ P`, and see each budget's spending per card in the details (`⌘ ⇧ D`). Enter copies a one-line summary of a budget, e.g. `Cafes, November: 3 766 / 5 000 ₴ (75%), 1 234 ₴ left, ≈ 62 ₴ a day for 20 days`, and `⌘ ↵` copies the amount left (or over). Create a budget from scratch or from a preset (Cafes & Restaurants, Groceries, Taxi, Transport, Car, Health, Clothes & Shoes, Subscriptions & Games, Entertainment, Beauty, Pets), then edit, reorder or delete it.
 
   ![Creating a budget from the Groceries preset](media/budget-form.png)
 
@@ -162,7 +164,8 @@ See your recurring charges, such as Netflix, Spotify, ChatGPT or your mobile pla
 - **Sections**: Upcoming (the next 7 days), Active, and Possibly Cancelled for subscriptions whose expected charge didn't come.
 - **History**: the command makes no requests when it opens. "Sync Statements" loads the history in the background, back to the "Keep Statements For" preference (3 months by default), and subscriptions show once a merchant has charged at least twice. Use Refresh (`⌘ R`) to update the last 31 days.
 - **Corrections**: rename a subscription with "Rename…" (`⌘ E`), or hide something that isn't one with "Not a Subscription" (`⌃ X`), here or on one of its charges in "Show Statement". Undo it from the toast, or later with "Show Hidden Subscriptions" (`⌘ ⇧ H`) and "Unhide".
-- Toggle details to see the monthly and yearly cost, the card, the category and every charge, or open the card's statement.
+- **Family subscriptions**: for a plan you share, use "Mark as Family…" (`⌘ ⇧ F`) and enter how many people share it, including you. Each person's share shows next to the price, in the details, in "Subscriptions Menu Bar" and in AI answers. Totals still count the full price, since that's what your card pays. Change it with "Edit Family Seats…", or undo it with "Not a Family Subscription".
+- Copy a subscription's amount with `⌘ ↵`, toggle details (`⌘ ⇧ D`) to see the monthly and yearly cost, the card, the category and every charge, or open the card's statement.
 
   ![Details of Netflix with a new price and its charges](media/subscriptions-details.png)
 
