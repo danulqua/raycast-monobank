@@ -1,6 +1,13 @@
 import { Icon, List } from "@raycast/api";
-import { CashbackType, Subscription, Transaction } from "../../types";
-import { formatAmount, formatDateTime, formatSubscriptionSummary, getAmountColor, getCategory } from "../../utils";
+import { Budget, CashbackType, Subscription, Transaction } from "../../types";
+import {
+  formatAmount,
+  formatDateTime,
+  formatSubscriptionSummary,
+  getAmountColor,
+  getCategory,
+  getTransactionBudgets,
+} from "../../utils";
 
 const { Metadata } = List.Item.Detail;
 
@@ -9,10 +16,18 @@ export default function TransactionDetail(props: {
   cashbackType?: CashbackType;
   /** The subscription the transaction is a charge of. Hidden ones aren't shown. */
   subscription?: Subscription;
+  /** The saved budgets, only on a budget account. */
+  budgets?: Budget[];
 }) {
-  const { transaction: t, cashbackType, subscription } = props;
+  const { transaction: t, cashbackType, subscription, budgets } = props;
   const isForeign = t.operationCurrency.code !== t.currency.code;
   const originalCategory = t.originalMcc !== t.mcc ? getCategory(t.originalMcc) : undefined;
+  const transactionBudgets = budgets && getTransactionBudgets(budgets, t);
+  // E.g. "Cafes, Food (added)".
+  const countedText = transactionBudgets?.counted
+    .map(({ budget, reason }) => (reason === "added" ? `${budget.name} (added)` : budget.name))
+    .join(", ");
+  const excludedText = transactionBudgets?.excluded.map((budget) => budget.name).join(", ");
   const cashback =
     cashbackType === CashbackType.MILES ? `${t.cashback.toFixed(2)} miles` : formatAmount(t.cashback, t.currency);
 
@@ -58,6 +73,12 @@ export default function TransactionDetail(props: {
               icon={Icon.Repeat}
               text={formatSubscriptionSummary(subscription)}
             />
+          )}
+          {countedText && (
+            <Metadata.Label key={`budgets:${countedText}`} title="Budgets" icon={Icon.Coins} text={countedText} />
+          )}
+          {excludedText && (
+            <Metadata.Label key={`excluded:${excludedText}`} title="Excluded From" text={excludedText} />
           )}
 
           {t.comment && (

@@ -1,6 +1,7 @@
 import { List } from "@raycast/api";
-import { CashbackType, Subscription, Transaction } from "../../types";
+import { Budget, CashbackType, Subscription, Transaction } from "../../types";
 import { getSubscriptionTag, getTransactionAccessories } from "../../utils";
+import { SetTransactionBudgets } from "../budgets/TransactionBudgetActions";
 import { SetSubscriptionHidden } from "../subscriptions/SubscriptionActions";
 import { StatementActionsProps } from "./StatementActionsSection";
 import TransactionActions from "./TransactionActions";
@@ -14,8 +15,20 @@ export default function TransactionListItem(props: {
   /** The subscription the transaction is a charge of, hidden ones included. */
   subscription?: Subscription;
   onSetSubscriptionHidden: SetSubscriptionHidden;
+  /** The saved budgets, only on a budget account. */
+  budgets?: Budget[];
+  onSetBudgets: SetTransactionBudgets;
 }) {
-  const { transaction, cashbackType, isShowingDetail, statement, subscription, onSetSubscriptionHidden } = props;
+  const {
+    transaction,
+    cashbackType,
+    isShowingDetail,
+    statement,
+    subscription,
+    onSetSubscriptionHidden,
+    budgets,
+    onSetBudgets,
+  } = props;
   const subscriptionTag = subscription && !subscription.hidden ? getSubscriptionTag(subscription) : undefined;
 
   return (
@@ -25,13 +38,22 @@ export default function TransactionListItem(props: {
       title={transaction.description}
       subtitle={transaction.comment ?? transaction.counterName}
       accessories={!isShowingDetail ? getTransactionAccessories(transaction, subscriptionTag) : undefined}
-      detail={<TransactionDetail transaction={transaction} cashbackType={cashbackType} subscription={subscription} />}
+      detail={
+        <TransactionDetail
+          transaction={transaction}
+          cashbackType={cashbackType}
+          subscription={subscription}
+          budgets={budgets}
+        />
+      }
       actions={
         <TransactionActions
           transaction={transaction}
           statement={statement}
           subscription={subscription}
           onSetSubscriptionHidden={onSetSubscriptionHidden}
+          budgets={budgets}
+          onSetBudgets={onSetBudgets}
         />
       }
     />

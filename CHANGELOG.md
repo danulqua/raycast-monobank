@@ -8,6 +8,7 @@
 - When several subscriptions are due the same day, the "Subscriptions Menu Bar" title counts the others and shows their total price, e.g. `YouTube (+1) · 780 ₴ · tomorrow`, or `≈ 780 ₴` at monobank's rates when they're in different currencies
 - Cards are listed Iron, Platinum and Black in UAH first, then White and Yellow, then the others, in "Show Accounts", the account dropdown in "Show Statement" and everywhere else
 - Toggle Details is `⌘ ⇧ D` everywhere. In "Show Subscriptions", Copy Amount is now the second action (`⌘ ↵`)
+- Correct a budget by hand when the merchant category is wrong: in "Show Statement", Add to Budget, Remove from Budget and Move to Budget count a transaction in a budget or leave it out, with Undo. The transaction's details show its budgets, "Show Budgets" shows what was added or excluded with a Clear Corrections action, and AI answers mention the corrections
 - In "Show Budgets" and "Manage Budgets…", Enter copies a one-line summary of a budget to share, and `⌘ ↵` copies the amount left (or over). Edit Budget moved to `⌘ E`
 
 ## [AI, Statements, Budgets, Subscriptions, Menu Bar and Currency Converter] - 2026-11-12

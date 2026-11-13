@@ -147,7 +147,7 @@ function StatementList(props: {
 
   // Budgets count the budget accounts for a calendar month, from every loaded transaction, whatever the search.
   // They show only on a budget account: this one's live transactions plus the stored ones of the others.
-  const { budgets } = useBudgets();
+  const { budgets, setTransactionBudgets } = useBudgets();
   const budgetAccounts = useBudgetAccounts();
   const isBudgetAccount = !!account && !!budgetAccounts.accounts?.some((item) => item.id === account.id);
   const budgetMonth = useMemo(() => (isBudgetAccount ? getBudgetMonth(period) : undefined), [isBudgetAccount, period]);
@@ -289,6 +289,8 @@ function StatementList(props: {
               statement={statementActions}
               subscription={subscriptionByCharge.get(transaction.id)}
               onSetSubscriptionHidden={setSubscriptionHidden}
+              budgets={isBudgetAccount ? budgets : undefined}
+              onSetBudgets={setTransactionBudgets}
             />
           ))}
         </List.Section>

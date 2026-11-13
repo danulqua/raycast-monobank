@@ -153,6 +153,7 @@ Set a monthly limit for one or more spending categories, e.g. "Cafes & Restauran
   ![Creating a budget from the Groceries preset](media/budget-form.png)
 
 - **Categories** are merchant category names, searchable in English or Ukrainian. Categories you spent on recently are listed first.
+- **Corrections**: a merchant category doesn't always match what you bought, e.g. a meal at a grocery store, or rent paid as a money transfer. In "Show Statement" on a budget account, use "Add to Budget" to count a transaction in a budget whose categories don't include it, "Remove from Budget" to leave one out, or "Move to Budget" to take it out of the budgets that count it and put it in another in one step. Each budget keeps its own corrections, and editing its categories keeps them. The transaction's details list the budgets that count it, and "Show Budgets" shows how much was added by hand or excluded, with "Clear Corrections" to undo them all.
 
 ## Show Subscriptions
 

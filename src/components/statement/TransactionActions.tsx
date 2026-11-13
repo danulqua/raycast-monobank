@@ -1,7 +1,8 @@
 import { Action, ActionPanel, Icon } from "@raycast/api";
 import { shortcuts } from "../../data/shortcuts";
-import { Subscription, Transaction } from "../../types";
+import { Budget, Subscription, Transaction } from "../../types";
 import { formatPlainAmount, getCheckGovUrl } from "../../utils";
+import TransactionBudgetActions, { SetTransactionBudgets } from "../budgets/TransactionBudgetActions";
 import SubscriptionActions, { SetSubscriptionHidden } from "../subscriptions/SubscriptionActions";
 import StatementActionsSection, { StatementActionsProps } from "./StatementActionsSection";
 
@@ -11,8 +12,11 @@ export default function TransactionActions(props: {
   /** The subscription the transaction is a charge of. */
   subscription?: Subscription;
   onSetSubscriptionHidden: SetSubscriptionHidden;
+  /** The saved budgets, only on a budget account. */
+  budgets?: Budget[];
+  onSetBudgets: SetTransactionBudgets;
 }) {
-  const { transaction: t, statement, subscription, onSetSubscriptionHidden } = props;
+  const { transaction: t, statement, subscription, onSetSubscriptionHidden, budgets, onSetBudgets } = props;
 
   return (
     <ActionPanel>
@@ -36,6 +40,10 @@ export default function TransactionActions(props: {
       </ActionPanel.Section>
 
       {subscription && <SubscriptionActions subscription={subscription} onSetHidden={onSetSubscriptionHidden} />}
+
+      {budgets && budgets.length > 0 && (
+        <TransactionBudgetActions transaction={t} budgets={budgets} onSetBudgets={onSetBudgets} />
+      )}
 
       <StatementActionsSection {...statement} />
     </ActionPanel>

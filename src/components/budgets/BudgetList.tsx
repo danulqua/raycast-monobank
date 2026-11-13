@@ -59,7 +59,7 @@ export default function BudgetList(props: {
     actions,
     navigationTitle,
   } = props;
-  const { budgets, isLoading: isLoadingBudgets, remove, move } = useBudgets();
+  const { budgets, isLoading: isLoadingBudgets, remove, move, clearCorrections } = useBudgets();
   const [isShowingDetail, setIsShowingDetail] = useState(false);
 
   const hasAccounts = accounts.length > 0;
@@ -100,6 +100,19 @@ export default function BudgetList(props: {
 
     await remove(budget);
     await showToast(Toast.Style.Success, "Budget Deleted", budget.name);
+  }
+
+  async function confirmClearCorrections(budget: Budget) {
+    const isConfirmed = await confirmAlert({
+      title: `Clear corrections of "${budget.name}"?`,
+      message: "Transactions added by hand won't count anymore, and excluded ones will count again by category.",
+      icon: { source: Icon.ArrowCounterClockwise, tintColor: Color.Red },
+      primaryAction: { title: "Clear", style: Alert.ActionStyle.Destructive },
+    });
+    if (!isConfirmed) return;
+
+    await clearCorrections(budget);
+    await showToast(Toast.Style.Success, "Corrections Cleared", budget.name);
   }
 
   const formProps = { spentCategories };
@@ -189,6 +202,14 @@ export default function BudgetList(props: {
                         onAction={() => move(budget, "down")}
                       />
                     )}
+                    {hasCorrections(budget) && (
+                      <Action
+                        title="Clear Corrections"
+                        icon={Icon.ArrowCounterClockwise}
+                        style={Action.Style.Destructive}
+                        onAction={() => confirmClearCorrections(budget)}
+                      />
+                    )}
                     <Action
                       title="Delete Budget"
                       icon={Icon.Trash}
@@ -237,6 +258,13 @@ function BudgetDetail(props: {
   const { budget, progress, month, groups } = props;
   const options = getCategoryOptions();
   const color = progress && getBudgetColor(progress.status);
+  // E.g. "1 240 ₴ · 3" and "−560 ₴ · 2" for the month; before it's loaded, how many transactions are corrected.
+  const added = progress
+    ? progress.added.count > 0 && `${formatHryvnias(progress.added.spent)} · ${progress.added.count}`
+    : formatCount(budget.added?.length);
+  const excluded = progress
+    ? progress.excluded.count > 0 && `${formatSignedHryvnias(-progress.excluded.amount)} · ${progress.excluded.count}`
+    : formatCount(budget.excluded?.length);
 
   return (
     <List.Item.Detail
@@ -291,6 +319,12 @@ function BudgetDetail(props: {
               />
             );
           })}
+          {added && (
+            <Metadata.Label key={`added:${added}`} title="Added Manually" icon={Icon.PlusCircle} text={added} />
+          )}
+          {excluded && (
+            <Metadata.Label key={`excluded:${excluded}`} title="Excluded" icon={Icon.MinusCircle} text={excluded} />
+          )}
           {progress && groups.length > 0 && (
             <>
               <Metadata.Separator />
@@ -313,6 +347,20 @@ function BudgetDetail(props: {
       }
     />
   );
+}
+
+function hasCorrections(budget: Budget) {
+  return !!budget.added?.length || !!budget.excluded?.length;
+}
+
+/** E.g. "3 transactions", or `undefined` for none. */
+function formatCount(count = 0) {
+  return count > 0 ? `${count} ${count === 1 ? "transaction" : "transactions"}` : undefined;
+}
+
+/** E.g. "−560 ₴" or "+120 ₴": how the excluded transactions change the spending. */
+function formatSignedHryvnias(amount: number) {
+  return `${amount < 0 ? "−" : "+"}${formatHryvnias(Math.abs(amount))}`;
 }
 
 /** What's left to spend, or how much it's over by. Before the spending is loaded, the limit. */

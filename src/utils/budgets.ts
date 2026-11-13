@@ -21,17 +21,21 @@ export interface BudgetMonth {
 
 export interface BudgetProgress {
   budget: Budget;
-  /** Expenses minus refunds in the budget's categories, never below 0. */
+  /** Expenses minus refunds of the transactions the budget counts (see `countsToward`), never below 0. */
   spent: number;
   /** `limit - spent`, negative when over. */
   left: number;
   /** `spent / limit`. */
   ratio: number;
   status: BudgetStatus;
-  /** Net spending per category, in the budget's order. */
+  /** Net spending per category, in the budget's order, without the excluded transactions. */
   categories: { name: string; spent: number }[];
   /** Net spending per account, in the order of the groups passed; accounts with none are left out. */
   byAccount: { accountId: string; spent: number }[];
+  /** Net spending of the transactions added by hand, already in `spent`. */
+  added: { spent: number; count: number };
+  /** What the excluded transactions would have added to `spent`. */
+  excluded: { amount: number; count: number };
   /** Current month only: what's left per day, today included. */
   perDayLeft?: number;
   /** Current month only: the spending by the end of the month at the pace so far. */
@@ -71,10 +75,41 @@ export interface BudgetTransactionGroup {
   transactions: Transaction[];
 }
 
+export type BudgetMatch = "category" | "added" | "excluded";
+
+/**
+ * How `budget` treats `transaction`: counted by its category, counted because it was added by hand, excluded by
+ * hand from its categories, or not at all. Categories are checked every time, so corrections stay right after the
+ * categories change: an added transaction whose category joins the budget counts once, by category.
+ */
+export function getBudgetMatch(budget: Budget, transaction: Transaction): BudgetMatch | undefined {
+  if (budget.categories.includes(transaction.category.name)) {
+    return budget.excluded?.includes(transaction.id) ? "excluded" : "category";
+  }
+  return budget.added?.includes(transaction.id) ? "added" : undefined;
+}
+
+/** Whether `budget` counts `transaction`, by category or added by hand. */
+export function countsToward(budget: Budget, transaction: Transaction) {
+  const match = getBudgetMatch(budget, transaction);
+  return match === "category" || match === "added";
+}
+
+/** The budgets that count `transaction`, in `budgets` order, with why, and the ones it's excluded from. */
+export function getTransactionBudgets(budgets: Budget[], transaction: Transaction) {
+  const counted: { budget: Budget; reason: "category" | "added" }[] = [];
+  const excluded: Budget[] = [];
+  for (const budget of budgets) {
+    const match = getBudgetMatch(budget, transaction);
+    if (match === "excluded") excluded.push(budget);
+    else if (match) counted.push({ budget, reason: match });
+  }
+  return { counted, excluded };
+}
+
 /**
  * How much of each budget is spent in `month`, across every group. Pass all loaded transactions of the month, not
- * the ones a search matched. Holds count; positive transactions in a budget's categories (refunds) reduce its
- * spending.
+ * the ones a search matched. Holds count; positive transactions a budget counts (refunds) reduce its spending.
  */
 export function getBudgetProgress(
   budgets: Budget[],
@@ -82,37 +117,51 @@ export function getBudgetProgress(
   month: BudgetMonth,
   now = new Date(),
 ): BudgetProgress[] {
-  const spentByCategory = new Map<string, number>();
-  // Per account, then per category.
-  const spentByAccount = groups.map(({ accountId, transactions }) => {
-    const byCategory = new Map<string, number>();
-    for (const transaction of transactions) {
-      if (transaction.time < month.from || transaction.time > month.to) continue;
-      const { name } = transaction.category;
-      byCategory.set(name, (byCategory.get(name) ?? 0) - transaction.amount);
-      spentByCategory.set(name, (spentByCategory.get(name) ?? 0) - transaction.amount);
-    }
-    return { accountId, byCategory };
-  });
+  const monthGroups = groups.map(({ accountId, transactions }) => ({
+    accountId,
+    transactions: transactions.filter((transaction) => transaction.time >= month.from && transaction.time <= month.to),
+  }));
 
   const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
   const daysElapsed = now.getDate();
   const daysLeft = daysInMonth - daysElapsed + 1;
 
   return budgets.map((budget) => {
-    const categories = budget.categories.map((name) => ({ name, spent: spentByCategory.get(name) ?? 0 }));
+    const byCategory = new Map(budget.categories.map((name) => [name, 0]));
+    const added = { spent: 0, count: 0 };
+    const excluded = { amount: 0, count: 0 };
+    const byAccount = monthGroups
+      .map(({ accountId, transactions }) => {
+        let spent = 0;
+        for (const transaction of transactions) {
+          const match = getBudgetMatch(budget, transaction);
+          if (!match) continue;
+          if (match === "excluded") {
+            excluded.amount -= transaction.amount;
+            excluded.count++;
+            continue;
+          }
+
+          spent -= transaction.amount;
+          if (match === "added") {
+            added.spent -= transaction.amount;
+            added.count++;
+          } else {
+            const { name } = transaction.category;
+            byCategory.set(name, (byCategory.get(name) ?? 0) - transaction.amount);
+          }
+        }
+        return { accountId, spent };
+      })
+      .filter((account) => account.spent !== 0);
+
+    const categories = [...byCategory].map(([name, spent]) => ({ name, spent }));
     const spent = Math.max(
-      categories.reduce((sum, category) => sum + category.spent, 0),
+      byAccount.reduce((sum, account) => sum + account.spent, 0),
       0,
     );
     const left = budget.limit - spent;
     const ratio = budget.limit > 0 ? spent / budget.limit : 0;
-    const byAccount = spentByAccount
-      .map(({ accountId, byCategory }) => ({
-        accountId,
-        spent: budget.categories.reduce((sum, name) => sum + (byCategory.get(name) ?? 0), 0),
-      }))
-      .filter((account) => account.spent !== 0);
 
     return {
       budget,
@@ -122,6 +171,8 @@ export function getBudgetProgress(
       status: getBudgetStatus(ratio),
       categories,
       byAccount,
+      added,
+      excluded,
       ...(month.isCurrent && {
         perDayLeft: Math.max(left, 0) / daysLeft,
         projected: (spent / daysElapsed) * daysInMonth,
