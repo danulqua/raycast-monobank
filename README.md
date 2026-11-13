@@ -186,6 +186,8 @@ See where your money goes and where it comes from as a chart, across your cards 
 - **Updating**: the command shows what's stored right away, then updates the switched-on accounts not updated in the last 5 minutes, one request a minute. "Sync Statements" keeps the statements of all your accounts and jars, which own transfers are recognised from. Use Refresh (`⌘ R`) to update the switched-on accounts now.
 - The view you picked, the rows you hid and the accounts you switched on are remembered.
 
+![Statistics for the selected categories and accounts](media/statistics.png)
+
 ## Sync Statements
 
 Keeps the statements of all your cards, FOP accounts and jars up to date in the background, so "Show Statement" and AI answers have today's transactions right away, even for accounts you rarely open.
