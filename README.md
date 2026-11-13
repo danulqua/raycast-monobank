@@ -26,7 +26,7 @@ View currency rates, all your accounts and their transactions in monobank, set m
 
 ## Setup
 
-The access token is required for the "Show Accounts", "Show Statement", "Show Budgets", "Show Subscriptions", "Sync Statements", "Jar Progress Menu Bar" and "Subscriptions Menu Bar" commands and for AI questions about your accounts, transactions, budgets and subscriptions. "Show Currency Rates" and currency questions work without it. To create an access token:
+The access token is required for the "Show Accounts", "Show Statement", "Show Budgets", "Show Subscriptions", "Show Statistics", "Sync Statements", "Jar Progress Menu Bar" and "Subscriptions Menu Bar" commands and for AI questions about your accounts, transactions, budgets and subscriptions. "Show Currency Rates" and currency questions work without it. To create an access token:
 
 1. Visit https://api.monobank.ua/
 2. Authenticate with your account
@@ -124,6 +124,7 @@ Browse the transactions of a card, FOP account or jar. Pick the account in the s
   ![Change Period with a custom range](media/statement-period.png)
 
 - The first item summarizes the period: income, spending and how much of it went to subscriptions, cashback, your budgets (see "Budgets") and spending by category.
+- Top-ups of your own jars have the Savings category instead of "Money transfer", and aren't counted as spending. A jar you smashed is still recognised if the extension saw it before, or if its payout ("Виплата банки") is in the stored history of one of your cards; otherwise its top-ups stay under "Money transfer".
 - Toggle details (`⌘ ⇧ D`) to see a transaction's category, cashback, balance after it, comment, receipt number and counterparty.
 
   ![Details of a Netflix charge with its subscription](media/statement-details.png)
@@ -142,7 +143,7 @@ Set a monthly limit for one or more spending categories, e.g. "Cafes & Restauran
 
 ![Show Budgets with spending of this month](media/budgets.png)
 
-- **What counts**: spending in the budget's categories in the calendar month, across your budget accounts: all your personal UAH cards by default (not FOP or eAid accounts). Choose them with "Choose Accounts…" (`⌘ ⇧ O`) in "Show Budgets". USD and EUR cards and jars aren't counted. Transactions on hold count, and money coming back in a budget's categories, such as refunds, is subtracted.
+- **What counts**: spending in the budget's categories in the calendar month, across your budget accounts: all your personal UAH cards by default (not FOP accounts or the eAid and National Cashback cards). Choose them with "Choose Accounts…" (`⌘ ⇧ O`) in "Show Budgets". USD and EUR cards and jars aren't counted. Transactions on hold count, and money coming back in a budget's categories, such as refunds, is subtracted.
 - **Where**: the Summary in "Show Statement" shows your budgets for "This Month" and "Last Month" on your budget accounts, totaled across all of them, with a ring, spent of the limit, what's left and, for this month, how much you can spend per day. An orange or red mark on the Summary means a budget is near (80%) or over its limit. While searching, budgets still cover the whole month.
 
   ![Budgets in the Summary of Show Statement](media/statement-budgets.png)
@@ -168,6 +169,19 @@ See your recurring charges, such as Netflix, Spotify, ChatGPT or your mobile pla
 - Copy a subscription's amount with `⌘ ↵`, toggle details (`⌘ ⇧ D`) to see the monthly and yearly cost, the card, the category and every charge, or open the card's statement.
 
   ![Details of Netflix with a new price and its charges](media/subscriptions-details.png)
+
+## Show Statistics
+
+See where your money goes and where it comes from as a chart, across your cards and FOP accounts, like the statistics in the monobank app.
+
+- **Views**: pick one in the search bar (`⌘ P`): Expenses and Income by category, Savings by jar, and Own Transfers by the card the money went to. The chart shows the view you picked, and the totals of all four stay under it: Income, Spent, Saved, To Own Cards and Net (income minus spent and saved).
+- **Switch rows on and off**: press `↵` on a category, jar or card to hide it or show it again, `⌘ ↵` to show only that one, or use "Show All". The chart and the totals follow at once. Hidden rows stay in the list in their place, so you can bring them back.
+- **Accounts**: every card and FOP account is listed under the rows with its amount in the current view, and is switched on and off the same way. Personal UAH cards are on at first. Accounts in other currencies are converted to UAH at monobank's rates today, and the totals are then marked with `≈`. Open an account's transactions with "View Statement" (`⌘ ⇧ S`).
+- **Your own money moving around** isn't spending or income, so it's kept out of both. Top-ups of your jars are Savings, and money taken back from a jar shows as Withdrawn. Top-ups of a jar you smashed before the extension saw it count as Savings only while its payout ("Виплата банки") is in the stored history; otherwise they stay in Expenses under "Money transfer". A transfer between your own accounts shows under Own Transfers, counted once, on the account it left.
+- **How own transfers are recognised**: monobank doesn't mark them, so they're found in the statements stored on your device. Two transfers of the same amount on two of your accounts (or a card and a jar), one out and one in, at most 2 minutes apart, are one transfer; between currencies the amounts are compared at the transfer's own rate when monobank gives it, or within 5% at today's rate. On FOP accounts the counterparty's IBAN is checked against your accounts. When the other account's statement isn't stored for the period yet, the description is used for incoming money only, e.g. "З Білої картки", "З Дія.Картки" or "З доларової картки": an outgoing transfer is always "Переказ на картку", which doesn't say where it goes, so it stays in Expenses until the receiving card's statement is stored. A transfer to your own card in another bank looks like a transfer to anyone else, so it stays in Expenses or Income under "Money transfer"; hide that category to leave it out.
+- **Period**: This Month at first. Change it with "Change Period…" (`⌘ ⇧ P`), as in "Show Statement".
+- **Updating**: the command shows what's stored right away, then updates the switched-on accounts not updated in the last 5 minutes, one request a minute. "Sync Statements" keeps the statements of all your accounts and jars, which own transfers are recognised from. Use Refresh (`⌘ R`) to update the switched-on accounts now.
+- The view you picked, the rows you hid and the accounts you switched on are remembered.
 
 ## Sync Statements
 

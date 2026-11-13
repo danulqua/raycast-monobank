@@ -136,9 +136,15 @@ export function isBudgetEligible(item: AccountOrJar): item is Account {
   return isAccount(item) && item.currency.code === "UAH";
 }
 
-/** Whether budgets count `account` until the user chooses: personal UAH cards, not FOP or eAid accounts. */
+// Money on these can only be spent on what the state programme allows, so it isn't part of everyday spending.
+const stateProgrammeTypes: AccountType[] = [AccountType.EAID, AccountType.MADE_IN_UKRAINE];
+
+/**
+ * Whether budgets count `account` until the user chooses: personal UAH cards, not FOP accounts or the cards of
+ * state programmes (eAid and National Cashback). A Diia card is spent like a regular one, so it counts.
+ */
 export function isDefaultBudgetAccount(account: AccountOrJar) {
-  return isBudgetEligible(account) && account.type !== AccountType.FOP && account.type !== AccountType.EAID;
+  return isBudgetEligible(account) && account.type !== AccountType.FOP && !stateProgrammeTypes.includes(account.type);
 }
 
 /**

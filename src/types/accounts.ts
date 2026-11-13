@@ -8,6 +8,11 @@ export enum AccountType {
   FOP = "fop",
   YELLOW = "yellow",
   EAID = "eAid",
+  // The two below aren't in monobank's API documentation, but the API returns them.
+  /** Дія.Картка: receives state payments, and is spent like a regular card. */
+  DIIA = "diia",
+  /** The "Національний кешбек" card, which the cashback of the "Зроблено в Україні" programme is paid to. */
+  MADE_IN_UKRAINE = "madeInUkraine",
 }
 
 export enum CashbackType {
@@ -54,7 +59,8 @@ export interface ClientInfo {
   jars: Jar[];
   /**
    * Every jar title seen for the token with fingerprint `scope`, including closed and renamed jars, so their
-   * top-ups in the stored history still count as Savings. Missing in caches from older versions.
+   * top-ups in the stored history still count as Savings. A jar closed before it was seen is added when a stored
+   * statement has its payout ("Виплата банки «Title»"). Missing in caches from older versions.
    */
   jarTitleHistory?: { scope: string; titles: string[] };
 }

@@ -1,5 +1,14 @@
 # monobank Changelog
 
+## [Visual Statistics, Family Subscriptions and Other Improvements ] - {PR_MERGE_DATE}
+
+- Added the "Show Statistics" command: a chart of your cash flow across your cards and FOP accounts, with four views in the search bar: Expenses and Income by category, Savings by jar, and Own Transfers by card. Press `↵` on a category or an account to hide it or show it again, and the chart and the totals of income, spending, savings and net follow at once. Accounts in other currencies are converted to UAH at monobank's rates. Transfers between your own accounts and to or from your jars are recognised in the stored statements and kept out of spending and income. Top-ups of a jar you smashed before installing the extension are Savings too, in "Show Statement" as well, once its payout is in the stored history; a transfer to your own card in another bank can't be told apart, so it stays under "Money transfer"
+- A new access token for the same monobank account keeps the stored statement history, custom account names and the rest of your data, so "Sync Statements" doesn't load the history again. A token of another person removes the previous person's statements, pins, budgets and subscription changes once monobank accepts it; rates and pinned rates are kept. A rejected or mistyped token, or no connection, changes nothing
+- Mark a subscription as family with "Mark as Family…" (`⌘ ⇧ F`) in "Show Subscriptions" and enter how many people share it, to see what each person pays in the list, the details, the menu bar and AI answers. Totals still count the full price, which your card pays
+- When several subscriptions are due the same day, the "Subscriptions Menu Bar" title counts the others and shows their total price, e.g. `YouTube (+1) · 780 ₴ · tomorrow`, or `≈ 780 ₴` at monobank's rates when they're in different currencies
+- Toggle Details is `⌘ ⇧ D` everywhere. In "Show Subscriptions", Copy Amount is now the second action (`⌘ ↵`)
+- In "Show Budgets" and "Manage Budgets…", Enter copies a one-line summary of a budget to share, and `⌘ ↵` copies the amount left (or over). Edit Budget moved to `⌘ E`
+
 ## [AI, Statements, Budgets, Subscriptions, Menu Bar and Currency Converter] - 2026-11-12
 
 - Added the "Currency Rate Menu Bar" command (macOS): a currency rate in the menu bar, with your pinned rates and all other rates in its menu. Choose the rate there, or with "Show in Menu Bar" (`⌘ ⇧ M`) in "Show Currency Rates", and choose whether the title shows the sell rate, the buy rate, both or only the flag
