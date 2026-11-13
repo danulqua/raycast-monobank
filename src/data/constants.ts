@@ -187,6 +187,18 @@ export const accountTypeTitles: Record<AccountType, string> = {
   madeInUkraine: "National Cashback",
 };
 
+/**
+ * The order cards are listed in: iron, platinum and black (only in UAH), then white and yellow, then the others in
+ * monobank's order, black cards in other currencies among them.
+ */
+export const accountTypeOrder: AccountType[] = [
+  AccountType.IRON,
+  AccountType.PLATINUM,
+  AccountType.BLACK,
+  AccountType.WHITE,
+  AccountType.YELLOW,
+];
+
 /** The id of the USD – UAH rate (ISO 4217 numeric codes), the default rate in the menu bar. */
 export const USD_UAH_RATE_ID = "840-980";
 

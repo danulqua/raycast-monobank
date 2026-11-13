@@ -1,4 +1,5 @@
 import { Account, AccountType, CashbackType, ClientInfo, Currency, CurrencyRate, Jar, Transaction } from "../types";
+import { compareAccountsByType } from "../utils/accounts";
 import { fromMinorUnits, isKnownCurrency, toCurrency, toCurrencyOrUnknown } from "../utils/currency";
 import { getCategory } from "../utils/mcc";
 import { isJarTopUp, SAVINGS_CATEGORY } from "../utils/savings";
@@ -45,10 +46,13 @@ export function toJar(jar: JarResponse): Jar {
  */
 export function toClientInfo(response: ClientInfoResponse, previous: ClientInfo, scope: string): ClientInfo {
   const ownerId = response.clientId ? getClientFingerprint(response.clientId) : undefined;
-  const accounts = response.accounts.map(toAccount).map((account) => {
-    const savedAccount = previous.accounts.find((saved) => saved.id === account.id);
-    return savedAccount ? { ...account, title: savedAccount.title } : account;
-  });
+  const accounts = response.accounts
+    .map(toAccount)
+    .map((account) => {
+      const savedAccount = previous.accounts.find((saved) => saved.id === account.id);
+      return savedAccount ? { ...account, title: savedAccount.title } : account;
+    })
+    .sort(compareAccountsByType);
   const jars = response.jars?.map(toJar) ?? [];
 
   const isSameOwner =

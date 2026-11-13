@@ -18,7 +18,7 @@ export const MOCK_CONFIG = {
    * finished, so history-based features (subscriptions, long periods, budgets) work right away and changes to the
    * mock data show up on the next run.
    */
-  prefillStatements: false,
+  prefillStatements: true,
   /**
    * Makes every request fail this way. `network` fails all requests, the others only the personal ones
    * (accounts and statements), like the real API.

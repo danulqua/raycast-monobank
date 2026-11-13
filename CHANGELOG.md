@@ -6,6 +6,7 @@
 - A new access token for the same monobank account keeps the stored statement history, custom account names and the rest of your data, so "Sync Statements" doesn't load the history again. A token of another person removes the previous person's statements, pins, budgets and subscription changes once monobank accepts it; rates and pinned rates are kept. A rejected or mistyped token, or no connection, changes nothing
 - Mark a subscription as family with "Mark as Family…" (`⌘ ⇧ F`) in "Show Subscriptions" and enter how many people share it, to see what each person pays in the list, the details, the menu bar and AI answers. Totals still count the full price, which your card pays
 - When several subscriptions are due the same day, the "Subscriptions Menu Bar" title counts the others and shows their total price, e.g. `YouTube (+1) · 780 ₴ · tomorrow`, or `≈ 780 ₴` at monobank's rates when they're in different currencies
+- Cards are listed Iron, Platinum and Black in UAH first, then White and Yellow, then the others, in "Show Accounts", the account dropdown in "Show Statement" and everywhere else
 - Toggle Details is `⌘ ⇧ D` everywhere. In "Show Subscriptions", Copy Amount is now the second action (`⌘ ↵`)
 - In "Show Budgets" and "Manage Budgets…", Enter copies a one-line summary of a budget to share, and `⌘ ↵` copies the amount left (or over). Edit Budget moved to `⌘ E`
 
