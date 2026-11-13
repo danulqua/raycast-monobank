@@ -13,13 +13,15 @@ const { Metadata } = List.Item.Detail;
 
 export default function TransactionDetail(props: {
   transaction: Transaction;
+  /** The transaction's account, in lists that aren't of one account. */
+  accountTitle?: string;
   cashbackType?: CashbackType;
   /** The subscription the transaction is a charge of. Hidden ones aren't shown. */
   subscription?: Subscription;
   /** The saved budgets, only on a budget account. */
   budgets?: Budget[];
 }) {
-  const { transaction: t, cashbackType, subscription, budgets } = props;
+  const { transaction: t, accountTitle, cashbackType, subscription, budgets } = props;
   const isForeign = t.operationCurrency.code !== t.currency.code;
   const originalCategory = t.originalMcc !== t.mcc ? getCategory(t.originalMcc) : undefined;
   const transactionBudgets = budgets && getTransactionBudgets(budgets, t);
@@ -36,6 +38,7 @@ export default function TransactionDetail(props: {
       metadata={
         <Metadata>
           <Metadata.Label title="Description" text={t.description} />
+          {accountTitle && <Metadata.Label title="Account" icon={Icon.CreditCard} text={accountTitle} />}
           <Metadata.Label title="Time" text={formatDateTime(t.time)} />
           {/* A hold is already done for the user; only the merchant's bank hasn't settled it yet. */}
           <Metadata.Label title="Settlement" text={t.hold ? "On hold (amount may still change)" : "Settled"} />

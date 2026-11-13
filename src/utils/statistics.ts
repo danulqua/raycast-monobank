@@ -1,5 +1,13 @@
 import { Icon } from "@raycast/api";
-import { Account, AccountType, CurrencyRate, StatisticsFilters, StatisticsViewId, Transaction } from "../types";
+import {
+  Account,
+  AccountType,
+  CountedTransaction,
+  CurrencyRate,
+  StatisticsFilters,
+  StatisticsViewId,
+  Transaction,
+} from "../types";
 import { getStatementItemTitle, isAccount } from "./accounts";
 import { isDefaultBudgetAccount } from "./budgets";
 import { ChartColor, ChartSlice, otherSliceColor, sliceColors } from "./chart";
@@ -108,6 +116,8 @@ export interface StatisticsRow {
   amount: number;
   /** How many transactions of the switched-on accounts it has. */
   count: number;
+  /** The transactions of the switched-on accounts that make up `amount`, newest first. */
+  transactions: CountedTransaction[];
   /** Positive, in UAH, by account id, for every account with any: switched on or not. */
   byAccount: Record<string, number>;
 }
@@ -139,6 +149,11 @@ export interface Statistics {
 }
 
 type RowInfo = Pick<StatisticsRow, "key" | "title" | "keywords" | "icon">;
+
+/** Newest first. */
+function compareByTime(a: CountedTransaction, b: CountedTransaction) {
+  return b.transaction.time - a.transaction.time;
+}
 
 function getCategoryRow({ category }: Transaction): RowInfo {
   return { key: category.name, title: category.name, keywords: [category.nameUk], icon: category.icon };
@@ -194,12 +209,13 @@ export function getStatistics(
     converted.push(account.id);
     if (isEnabled && account.currency.code !== "UAH") isApproximate = true;
 
-    const add = (view: StatisticsViewId, info: RowInfo, amount: number) => {
-      const row = rows[view].get(info.key) ?? { ...info, amount: 0, count: 0, byAccount: {} };
+    const add = (view: StatisticsViewId, info: RowInfo, transaction: Transaction, amount: number) => {
+      const row = rows[view].get(info.key) ?? { ...info, amount: 0, count: 0, transactions: [], byAccount: {} };
       row.byAccount[account.id] = (row.byAccount[account.id] ?? 0) + amount;
       if (isEnabled) {
         row.amount += amount;
         row.count++;
+        row.transactions.push({ account, transaction, amount });
       }
       rows[view].set(info.key, row);
     };
@@ -209,12 +225,12 @@ export function getStatistics(
       if (!flow || transaction.amount === 0) continue;
 
       const amount = Math.abs(transaction.amount) * rate;
-      if (flow.kind === "expense") add("expenses", getCategoryRow(transaction), amount);
-      else if (flow.kind === "income") add("income", getCategoryRow(transaction), amount);
-      else if (flow.kind === "savings") add("savings", getJarRow(flow), amount);
+      if (flow.kind === "expense") add("expenses", getCategoryRow(transaction), transaction, amount);
+      else if (flow.kind === "income") add("income", getCategoryRow(transaction), transaction, amount);
+      else if (flow.kind === "savings") add("savings", getJarRow(flow), transaction, amount);
       else if (flow.kind === "withdrawal") withdrawn[account.id] = (withdrawn[account.id] ?? 0) + amount;
       // The incoming side isn't counted: the money is the same.
-      else if (transaction.amount < 0) add("ownTransfers", getCardRow(flow), amount);
+      else if (transaction.amount < 0) add("ownTransfers", getCardRow(flow), transaction, amount);
     }
   }
 
@@ -237,10 +253,12 @@ export function getStatistics(
         ? converted.reduce((total, id) => total + (enabledAccountIds.has(id) ? (withdrawn[id] ?? 0) : 0), 0)
         : (withdrawn[accountId] ?? 0),
   });
-  const sort = (view: StatisticsViewId) =>
-    [...rows[view].values()]
-      .filter((row) => row.count > 0)
-      .sort((a, b) => b.amount - a.amount || a.title.localeCompare(b.title));
+  const sort = (view: StatisticsViewId) => {
+    const list = [...rows[view].values()].filter((row) => row.count > 0);
+    // Each account's transactions are newest first; a row's are of several accounts.
+    for (const row of list) row.transactions.sort(compareByTime);
+    return list.sort((a, b) => b.amount - a.amount || a.title.localeCompare(b.title));
+  };
 
   return {
     rows: {

@@ -1,6 +1,6 @@
 import { Color, Image } from "@raycast/api";
 import { BUDGET_WARNING_RATIO } from "../data/constants";
-import { Account, AccountOrJar, AccountType, Budget, Period, Transaction } from "../types";
+import { Account, AccountOrJar, AccountType, Budget, CountedTransaction, Period, Transaction } from "../types";
 import { getProgressRing, getStatementItemTitle, isAccount, progressColors } from "./accounts";
 import { formatCurrency } from "./currency";
 import { isPreset } from "./statement";
@@ -107,6 +107,10 @@ export function getTransactionBudgets(budgets: Budget[], transaction: Transactio
   return { counted, excluded };
 }
 
+function isInMonth(transaction: Transaction, month: BudgetMonth) {
+  return transaction.time >= month.from && transaction.time <= month.to;
+}
+
 /**
  * How much of each budget is spent in `month`, across every group. Pass all loaded transactions of the month, not
  * the ones a search matched. Holds count; positive transactions a budget counts (refunds) reduce its spending.
@@ -119,7 +123,7 @@ export function getBudgetProgress(
 ): BudgetProgress[] {
   const monthGroups = groups.map(({ accountId, transactions }) => ({
     accountId,
-    transactions: transactions.filter((transaction) => transaction.time >= month.from && transaction.time <= month.to),
+    transactions: transactions.filter((transaction) => isInMonth(transaction, month)),
   }));
 
   const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
@@ -180,6 +184,39 @@ export function getBudgetProgress(
       }),
     };
   });
+}
+
+/** A transaction `budget` counts, by its category or because it was added by hand. */
+export type BudgetCountedTransaction = CountedTransaction & { match: "category" | "added" };
+
+/**
+ * The transactions of `month` behind a budget's spending in `getBudgetProgress`, newest first: the ones it counts,
+ * whose amounts add up to it (before it's kept from going below 0), and the ones excluded by hand, with what each
+ * would have added.
+ */
+export function getBudgetTransactions(
+  budget: Budget,
+  groups: { account: Account; transactions: Transaction[] }[],
+  month: BudgetMonth,
+) {
+  const counted: BudgetCountedTransaction[] = [];
+  const excluded: CountedTransaction[] = [];
+
+  for (const { account, transactions } of groups) {
+    for (const transaction of transactions) {
+      if (!isInMonth(transaction, month)) continue;
+      const match = getBudgetMatch(budget, transaction);
+      if (!match) continue;
+
+      const entry = { account, transaction, amount: -transaction.amount };
+      if (match === "excluded") excluded.push(entry);
+      else counted.push({ ...entry, match });
+    }
+  }
+
+  // Each account's transactions are newest first; these are of several accounts.
+  const byTime = (a: CountedTransaction, b: CountedTransaction) => b.transaction.time - a.transaction.time;
+  return { counted: counted.sort(byTime), excluded: excluded.sort(byTime) };
 }
 
 /** Whether budgets can count `item`: a card or FOP account in UAH. Jars and USD/EUR cards never count. */

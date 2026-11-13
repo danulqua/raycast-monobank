@@ -280,13 +280,13 @@ function StatementList(props: {
           title={day.title}
           subtitle={summary.currency && formatAmount(day.net, summary.currency, { signed: true })}
         >
-          {day.transactions.map((transaction) => (
+          {day.items.map((transaction) => (
             <TransactionListItem
               key={transaction.id}
               transaction={transaction}
               cashbackType={cashbackType}
               isShowingDetail={isShowingDetail}
-              statement={statementActions}
+              actions={<StatementActionsSection {...statementActions} />}
               subscription={subscriptionByCharge.get(transaction.id)}
               onSetSubscriptionHidden={setSubscriptionHidden}
               budgets={isBudgetAccount ? budgets : undefined}

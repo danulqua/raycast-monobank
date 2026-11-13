@@ -1,22 +1,23 @@
 import { Action, ActionPanel, Icon } from "@raycast/api";
+import { ReactNode } from "react";
 import { shortcuts } from "../../data/shortcuts";
 import { Budget, Subscription, Transaction } from "../../types";
 import { formatPlainAmount, getCheckGovUrl } from "../../utils";
 import TransactionBudgetActions, { SetTransactionBudgets } from "../budgets/TransactionBudgetActions";
 import SubscriptionActions, { SetSubscriptionHidden } from "../subscriptions/SubscriptionActions";
-import StatementActionsSection, { StatementActionsProps } from "./StatementActionsSection";
 
 export default function TransactionActions(props: {
   transaction: Transaction;
-  statement: StatementActionsProps;
+  /** The actions of the list itself, shown last: an `ActionPanel.Section`. */
+  actions: ReactNode;
   /** The subscription the transaction is a charge of. */
   subscription?: Subscription;
-  onSetSubscriptionHidden: SetSubscriptionHidden;
+  onSetSubscriptionHidden?: SetSubscriptionHidden;
   /** The saved budgets, only on a budget account. */
   budgets?: Budget[];
   onSetBudgets: SetTransactionBudgets;
 }) {
-  const { transaction: t, statement, subscription, onSetSubscriptionHidden, budgets, onSetBudgets } = props;
+  const { transaction: t, actions, subscription, onSetSubscriptionHidden, budgets, onSetBudgets } = props;
 
   return (
     <ActionPanel>
@@ -39,13 +40,15 @@ export default function TransactionActions(props: {
         <Action.CopyToClipboard title="Copy Transaction ID" content={t.id} />
       </ActionPanel.Section>
 
-      {subscription && <SubscriptionActions subscription={subscription} onSetHidden={onSetSubscriptionHidden} />}
+      {subscription && onSetSubscriptionHidden && (
+        <SubscriptionActions subscription={subscription} onSetHidden={onSetSubscriptionHidden} />
+      )}
 
       {budgets && budgets.length > 0 && (
         <TransactionBudgetActions transaction={t} budgets={budgets} onSetBudgets={onSetBudgets} />
       )}
 
-      <StatementActionsSection {...statement} />
+      {actions}
     </ActionPanel>
   );
 }

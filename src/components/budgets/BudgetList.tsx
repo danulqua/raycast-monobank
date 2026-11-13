@@ -23,6 +23,7 @@ import {
   isSyncedToday,
 } from "../../utils";
 import BudgetForm from "./BudgetForm";
+import BudgetTransactionsView from "./BudgetTransactionsView";
 
 const { Metadata } = List.Item.Detail;
 
@@ -171,6 +172,19 @@ export default function BudgetList(props: {
                     <Action.CopyToClipboard {...getCopyLeftProps(budget, item)} />
                   </ActionPanel.Section>
                   <ActionPanel.Section>
+                    {month && item && (
+                      <Action.Push
+                        title="Show Transactions"
+                        icon={Icon.List}
+                        shortcut={shortcuts.viewStatement}
+                        target={
+                          <BudgetTransactionsView
+                            budgetId={budget.id}
+                            month={month.isCurrent ? "thisMonth" : "lastMonth"}
+                          />
+                        }
+                      />
+                    )}
                     <Action.Push
                       title="Edit Budget"
                       icon={Icon.Pencil}

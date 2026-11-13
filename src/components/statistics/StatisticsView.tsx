@@ -2,14 +2,13 @@ import { Action, ActionPanel, Color, Icon, List, environment } from "@raycast/ap
 import { ReactNode, useEffect, useMemo, useState } from "react";
 import { STORAGE_KEYS } from "../../data/constants";
 import { shortcuts } from "../../data/shortcuts";
-import { useAccountStatements, useClientInfo, useCurrencyRates, useLocalStorage } from "../../hooks";
+import { useLocalStorage, useStatistics } from "../../hooks";
 import { roundAmount } from "../../services/format";
 import { Account, Period, StatisticsFilters, StatisticsViewId } from "../../types";
 import {
   DEFAULT_STATISTICS_FILTERS,
   StatisticsRow,
   StatisticsTotals,
-  classifyFlows,
   formatAmount,
   formatHryvnias,
   formatShare,
@@ -17,17 +16,13 @@ import {
   getAmountColor,
   getBudgetMonth,
   getDonutImage,
-  getJarTitles,
   getRowColor,
   getSliceKey,
   getSlices,
   getStatementItemTitle,
-  getStatistics,
-  getStatisticsAccounts,
   isStatisticsViewId,
   isSyncedToday,
   resolvePeriod,
-  resolveStatisticsAccountIds,
   statisticsViewIds,
   statisticsViews,
   toCurrency,
@@ -36,6 +31,7 @@ import {
 import PeriodForm from "../statement/PeriodForm";
 import StatementView from "../statement/StatementView";
 import TokenErrorEmptyView, { showInvalidTokenToast } from "../TokenErrorEmptyView";
+import StatisticsTransactionsView from "./StatisticsTransactionsView";
 
 const { Metadata } = List.Item.Detail;
 
@@ -49,53 +45,27 @@ const OFF_ICON = { source: Icon.Circle, tintColor: Color.SecondaryText };
  * Expenses, Income, Savings and Own Transfers. Every row of the view and every account is switched on and off with
  * ⏎, and the chart and the totals follow at once.
  *
- * The chart is in the detail of every row, since the detail belongs to the selected one. The stored statements of
- * all accounts and jars are read once, so both sides of a transfer between the user's accounts are seen and
- * switching an account is only a filter. The switched-on accounts are then updated when they're stale.
+ * The chart is in the detail of every row, since the detail belongs to the selected one. The data is that of
+ * `useStatistics`, which updates the switched-on accounts when they're stale.
  */
 export default function StatisticsView() {
-  const clientInfo = useClientInfo();
-  const { data: rates } = useCurrencyRates();
   const [view, setView] = useState<StatisticsViewId>("expenses");
   const [period, setPeriod] = useState<Period>(THIS_MONTH);
   const stored = useLocalStorage<StatisticsFilters>(STORAGE_KEYS.statisticsFilters, DEFAULT_STATISTICS_FILTERS);
   const filters = useMemo(() => toStatisticsFilters(stored.data), [stored.data]);
 
-  const accounts = useMemo(() => getStatisticsAccounts(clientInfo.data.accounts), [clientInfo.data.accounts]);
-  const enabledIds = useMemo(
-    () => resolveStatisticsAccountIds(accounts, filters.accountIds),
-    [accounts, filters.accountIds],
-  );
-  // Nothing loads until the cached accounts and the saved filters are read, so the default accounts aren't
-  // updated (and the rate limit spent) in place of the chosen ones.
-  const isReady = !clientInfo.isLoadingFromStorage && !stored.isLoading;
-  const items = useMemo(
-    () => (isReady ? [...accounts, ...clientInfo.data.jars] : undefined),
-    [isReady, accounts, clientInfo.data.jars],
-  );
-  const enabledAccounts = useMemo(
-    () => (isReady ? accounts.filter((account) => enabledIds.has(account.id)) : undefined),
-    [isReady, accounts, enabledIds],
-  );
-
-  // Stored data only. It reads an account again whenever the sync below saves it.
-  const statements = useAccountStatements(items, period, { label: "statistics" });
-  const sync = useAccountStatements(enabledAccounts, period, { sync: true, label: "statistics" });
-
-  const tokenError = clientInfo.tokenError ?? sync.tokenError ?? statements.tokenError;
+  // Nothing loads until the saved filters are read, so the default accounts aren't updated (and the rate limit
+  // spent) in place of the chosen ones.
+  const data = useStatistics(period, {
+    accountIds: filters.accountIds,
+    excluded: filters.excluded,
+    isReady: !stored.isLoading,
+    sync: true,
+  });
+  const { accounts, enabledIds, enabledAccounts, statements, sync, statistics, tokenError } = data;
   useEffect(() => {
     if (tokenError === "invalid") showInvalidTokenToast();
   }, [tokenError]);
-
-  const jarTitles = useMemo(() => getJarTitles(clientInfo.data), [clientInfo.data]);
-  const flows = useMemo(
-    () => classifyFlows(statements.groups, { rates, jarTitles }),
-    [statements.groups, rates, jarTitles],
-  );
-  const statistics = useMemo(
-    () => getStatistics(statements.groups, flows, { enabledAccountIds: enabledIds, excluded: filters.excluded, rates }),
-    [statements.groups, flows, enabledIds, filters.excluded, rates],
-  );
 
   const viewInfo = statisticsViews[view];
   const rows = statistics.rows[view];
@@ -104,7 +74,7 @@ export default function StatisticsView() {
   const { isApproximate } = statistics;
   const hasAccounts = enabledIds.size > 0;
   const periodLabel = getBudgetMonth(period)?.label ?? resolvePeriod(period).label;
-  const isLoading = clientInfo.isLoading || stored.isLoading || statements.isLoading || sync.isLoading;
+  const isLoading = stored.isLoading || data.isLoading;
 
   const approximate = (text: string) => (isApproximate ? `≈ ${text}` : text);
   const formatTotal = (amount: number, options?: { signed?: boolean }) =>
@@ -347,17 +317,16 @@ export default function StatisticsView() {
             {rows.map((row, index) => {
               const isOff = excluded.includes(row.key);
               const amount = approximate(formatHryvnias(row.amount));
+              const icon = isOff
+                ? OFF_ICON
+                : { source: Icon.CircleFilled, tintColor: { ...getRowColor(index), adjustContrast: false } };
 
               return (
                 <List.Item
                   // Rows keep their place when switched off, so nothing moves under the selection.
                   key={row.key}
                   id={`${view}:${row.key}`}
-                  icon={
-                    isOff
-                      ? OFF_ICON
-                      : { source: Icon.CircleFilled, tintColor: { ...getRowColor(index), adjustContrast: false } }
-                  }
+                  icon={icon}
                   title={row.title}
                   keywords={row.keywords}
                   accessories={[{ text: { value: amount, color: isOff ? Color.SecondaryText : Color.PrimaryText } }]}
@@ -375,6 +344,21 @@ export default function StatisticsView() {
                           icon={Icon.Filter}
                           onAction={() =>
                             setExcluded(rows.filter((item) => item.key !== row.key).map((item) => item.key))
+                          }
+                        />
+                        <Action.Push
+                          title="Show Transactions"
+                          icon={Icon.List}
+                          shortcut={shortcuts.viewStatement}
+                          target={
+                            <StatisticsTransactionsView
+                              view={view}
+                              rowKey={row.key}
+                              title={row.title}
+                              icon={icon}
+                              period={period}
+                              accountIds={[...enabledIds]}
+                            />
                           }
                         />
                         {shownRows < rows.length && (
